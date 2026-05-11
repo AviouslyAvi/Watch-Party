@@ -1,0 +1,19 @@
+{
+  "name": "cineby-party",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Teleparty-style synchronized watch party for cineby.sc",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev:relay": "wrangler dev --config relay/wrangler.toml",
+    "deploy:relay": "wrangler deploy --config relay/wrangler.toml",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^3.90.0"
+  }
+}
