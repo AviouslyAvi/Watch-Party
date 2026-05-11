@@ -16,6 +16,8 @@ Teleparty-style synchronized watch party for [cineby.sc](https://www.cineby.sc/)
 3. Open any movie/show on cineby.sc. Panel appears bottom-right.
 4. Click **Copy room link**, send to friends. They open the link with the userscript installed → instant party.
 
+There's also a companion landing page (Cloudflare Pages) that hosts the install link and a "create a room" form. It does **not** run the sync — same-origin policy blocks any hosted page from touching Cineby's video. The userscript is the part that actually works.
+
 ## Develop
 
 ```bash
@@ -31,6 +33,7 @@ Paste `dist/cineby-party.user.js` into Tampermonkey's editor for fast iteration.
 ```bash
 npm run deploy:relay      # → wss://cineby-party-relay.<account>.workers.dev
 WS_URL=wss://cineby-party-relay.<account>.workers.dev npm run build
+npm run deploy:landing    # → https://cineby-party.pages.dev (or custom domain)
 ```
 
 ## Architecture

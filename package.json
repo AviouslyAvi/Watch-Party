@@ -8,6 +8,7 @@
     "build": "node build.mjs",
     "dev:relay": "wrangler dev --config relay/wrangler.toml",
     "deploy:relay": "wrangler deploy --config relay/wrangler.toml",
+    "deploy:landing": "cp dist/cineby-party.user.js landing/cineby-party.user.js && wrangler pages deploy landing --project-name cineby-party",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

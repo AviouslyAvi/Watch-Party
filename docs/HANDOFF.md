@@ -6,6 +6,8 @@ Last updated: 2026-05-11
 
 v1 scaffolded. All routing files (`CLAUDE.md` at root + each workspace), the shared sync engine, the relay (Cloudflare Worker + Durable Object), and the Tampermonkey userscript are written but **not yet built or tested**. No `npm install` has been run. Repo not yet pushed to GitHub.
 
+Companion landing page added under `landing/` and verified in browser preview (renders, validates cineby.sc URLs, generates `#party=` hash). Not yet deployed to Cloudflare Pages.
+
 ## What's done
 
 - Three-layer routing: root `CLAUDE.md` + `shared/`, `client/`, `relay/`, `docs/` per-workspace `CLAUDE.md`.
@@ -18,6 +20,7 @@ v1 scaffolded. All routing files (`CLAUDE.md` at root + each workspace), the sha
 - `client/userscript/ui/panel.ts` — draggable floating panel with chat + FFA toggle.
 - `build.mjs` — esbuild bundling with Tampermonkey banner + `WS_URL` define.
 - Docs: decision log for the stack choice, research note on Cineby player anatomy.
+- `landing/` — static companion page (`index.html` + `style.css` + `app.js`) with install button and "create a room" form that bounces to cineby.sc with `#party=<uuid>`.
 
 ## Exact next step
 

@@ -10,6 +10,7 @@ You are working in the **cineby-party** repo: a Teleparty-style synchronized wat
 | `client/userscript/` | Tampermonkey userscript: video hooks, iframe bridge, floating UI. | Editing anything the user sees in the browser.    |
 | `client/extension/` | (v2) MV3 Chrome extension wrapper. Empty in v1.                   | When v1 ships and you're starting the extension.  |
 | `relay/`           | Cloudflare Worker + Durable Object. Room state, broadcast, perms.  | Editing room logic, permissions, or deploy.       |
+| `landing/`         | Static companion site (Cloudflare Pages). Install + room creator.  | Changing onboarding flow or marketing copy.       |
 | `docs/`            | Decisions, research notes, handoff.                                | Logging a decision or resuming from a new chat.   |
 
 **Always** read the `CLAUDE.md` inside a workspace before editing files there. It contains workspace-specific pipeline rules.
@@ -23,6 +24,7 @@ You are working in the **cineby-party** repo: a Teleparty-style synchronized wat
 | Change room/permission server logic   | `relay/CLAUDE.md`, `relay/room.ts`, `relay/worker.ts`                 | `client/`                     | —                         |
 | Build & release a new userscript      | `client/CLAUDE.md`, `build.mjs`, `client/userscript/banner.txt`       | `relay/`                      | —                         |
 | Start v2 extension                    | `client/CLAUDE.md`, `client/extension/`                               | `client/userscript/main.ts`   | —                         |
+| Edit the landing page / onboarding    | `landing/CLAUDE.md`, `landing/index.html`, `landing/app.js`           | `shared/`, `relay/`           | —                         |
 | Resume work in a new chat             | `docs/HANDOFF.md`                                                     | everything else               | —                         |
 
 ## Naming conventions
