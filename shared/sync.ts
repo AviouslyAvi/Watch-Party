@@ -40,14 +40,18 @@ export function createSyncClient(opts: SyncClientOpts) {
   function applyRemote(msg: SyncMsg) {
     suppressUntil = now() + SUPPRESS_MS;
     switch (msg.type) {
-      case "play":
-        opts.video.seek(msg.at);
+      case "play": {
+        const drift = Math.abs(opts.video.getTime() - msg.at);
+        if (drift > driftThreshold) opts.video.seek(msg.at);
         opts.video.play();
         break;
-      case "pause":
-        opts.video.seek(msg.at);
+      }
+      case "pause": {
         opts.video.pause();
+        const drift = Math.abs(opts.video.getTime() - msg.at);
+        if (drift > driftThreshold) opts.video.seek(msg.at);
         break;
+      }
       case "seek":
         opts.video.seek(msg.at);
         break;

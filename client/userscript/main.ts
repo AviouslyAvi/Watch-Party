@@ -16,7 +16,7 @@ if (!isTopFrame) {
 function bootTopFrame() {
   const me = ensureName();
   const roomId = ensureRoom();
-  const roomUrl = roomLinkForCurrent(roomId);
+  const currentRoomUrl = () => roomLinkForCurrent(roomId);
 
   let you = "";
   let adminId = "";
@@ -25,9 +25,10 @@ function bootTopFrame() {
 
   const panel = mountPanel({
     onCopyLink: () => {
-      navigator.clipboard.writeText(roomUrl).then(
+      const url = currentRoomUrl();
+      navigator.clipboard.writeText(url).then(
         () => panel.appendSystem("Room link copied."),
-        () => panel.appendSystem("Copy failed — link: " + roomUrl),
+        () => panel.appendSystem("Copy failed — link: " + url),
       );
     },
     onToggleFFA: (next) => {
@@ -79,7 +80,7 @@ function bootTopFrame() {
         you = msg.you;
         adminId = msg.adminId;
         freeForAll = msg.freeForAll;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl });
+        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
         if (you === adminId) {
           sync.startHeartbeat();
           panel.appendSystem("You are the admin.");
@@ -88,7 +89,7 @@ function bootTopFrame() {
         return;
       case "participants":
         adminId = msg.adminId;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl });
+        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
         if (you === adminId) sync.startHeartbeat();
         return;
       case "ffa":

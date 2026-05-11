@@ -67,6 +67,8 @@ export function mountPanel(hooks: PanelHooks) {
     hooks.onSendChat(t);
     input.value = "";
   });
+  const stop = (e: Event) => e.stopPropagation();
+  for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
 
   // drag
   const header = $("#cp-header") as HTMLDivElement;
