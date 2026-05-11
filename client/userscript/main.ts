@@ -188,7 +188,7 @@ function ensureName(): string {
   const k = "cp-name";
   let n = localStorage.getItem(k);
   if (!n) {
-    n = (prompt("Avious Party — your display name?", "guest") || "guest").slice(0, 32);
+    n = (prompt("Watch-Party — your display name?", "guest") || "guest").slice(0, 32);
     localStorage.setItem(k, n);
   }
   return n;

@@ -1,4 +1,4 @@
-# Avious Party
+# Watch-Party
 
 Teleparty-style synchronized watch party for **any site with a video player**. Ships as a Tampermonkey userscript backed by a Cloudflare Worker relay.
 

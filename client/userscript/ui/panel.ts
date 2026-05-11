@@ -26,7 +26,7 @@ export function mountPanel(hooks: PanelHooks) {
   `;
   host.innerHTML = `
     <div id="cp-header" style="padding:8px 10px;border-bottom:1px solid #333;cursor:move;display:flex;justify-content:space-between;align-items:center;">
-      <span>🎬 Avious Party</span>
+      <span>🎬 Watch-Party</span>
       <button id="cp-collapse" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;">–</button>
     </div>
     <div id="cp-body" style="display:flex;flex-direction:column;min-height:0;">
