@@ -1,44 +1,47 @@
 # avious-party — Handoff
 
 Last updated: 2026-05-11
+Milestone: **Barebones-1**
 
 ## Status
 
-v1 scaffolded **and rebranded from "Cineby Party" to "Avious Party"** (now a generic any-site watch-party tool, not cineby-specific). `npm install` done; `npm run typecheck` clean; `npm run build` produces `dist/avious-party.user.js`; relay boots via `npm run dev:relay` and accepts WS handshakes (verified with a node ws smoke test). GitHub repo lives at `github.com/AviouslyAvi/cineby-party` and **needs to be renamed** to `avious-party` (see Exact next step).
+Chrome MV3 extension shipping and verified working between two browser profiles on the same machine against Cineby. Userscript path still works in parallel. Three v1 bugs fixed in commit `ae9bd35` (now on `origin/main`):
 
-Companion landing page (`landing/`) generalized to accept any http(s) URL. Not yet deployed to Cloudflare Pages.
+1. Room link captured at boot instead of click time → shared link dropped the SPA path on sites like Cineby.
+2. Spacebar (and other player shortcuts) in the chat input leaked through to the page's video.
+3. Receiver showed a buffering spinner on every remote play/pause because the engine seeked unconditionally before pausing.
 
-## What's done
+The relay is **only running locally** (`ws://localhost:8787`). Friend-to-friend testing fails because their machine has nothing on that port. Wrangler is not logged in yet.
 
-- Three-layer routing: root `CLAUDE.md` + `shared/`, `client/`, `relay/`, `docs/` per-workspace `CLAUDE.md`.
-- `shared/protocol.ts` — wire message types.
-- `shared/sync.ts` — `createSyncClient` pure engine with `VideoAdapter` injection, drift correction, suppress flag.
-- `relay/room.ts` — Durable Object: admin = first joiner, server-enforced permissions, revert messages.
-- `relay/worker.ts` — fetch handler routing `/ws?room=` to DOs.
-- `client/userscript/main.ts` — top-frame entry: WS, sync wiring, video adapter that supports both top-frame and iframe video. Host gate removed; activates on any top-frame page.
-- `client/userscript/iframe-bridge.ts` — runs in cross-origin iframe, postMessages events to top.
-- `client/userscript/ui/panel.ts` — draggable floating panel with chat + FFA toggle.
-- `build.mjs` — esbuild bundling with Tampermonkey banner + `WS_URL` define.
-- `landing/` — static companion page with install button and "create a room" form. Accepts any http(s) URL.
-- Local install + typecheck + build verified. Relay WS handshake verified locally.
+## What's done since the last handoff
+
+- `client/extension/manifest.json` + `content.ts` — MV3 wrapper with `all_frames: true` + `match_about_blank: true` so the content script reaches Cineby's cross-origin player iframe without depending on Tampermonkey's per-user iframe-injection setting.
+- `build.mjs` + `package.json` — `TARGET=user|ext|all` (`npm run build:user|build:ext|build`). Outputs `dist/extension/` ready for "Load unpacked".
+- Three fixes listed in Status above. Drift-check before seek now applies to play and pause; seek still applies unconditionally to remote `seek` messages.
 
 ## Exact next step
 
-1. Two-browser verification (manual, requires user): start `npm run dev:relay`, install `dist/avious-party.user.js` into Tampermonkey on two browser profiles, walk through `/Users/aviouslyavi/.claude/plans/sure-but-i-want-ancient-haven.md`.
-2. `gh repo rename avious-party` (renames `cineby-party` repo on GitHub).
-3. Rename local checkout: `mv ~/Claude/Personal/cineby-party ~/Claude/Personal/avious-party`.
-4. Update git remote URL after repo rename: `git remote set-url origin https://github.com/AviouslyAvi/avious-party.git`.
-5. `wrangler deploy --config relay/wrangler.toml`, rebuild with `WS_URL=wss://avious-party-relay.<account>.workers.dev`, retest.
-6. `npm run deploy:landing`.
+1. **Avi: log into Cloudflare** so the relay can be deployed:
+   ```
+   ./node_modules/.bin/wrangler login
+   ```
+2. Next chat: `npm run deploy:relay` to produce the `wss://avious-party-relay.<account>.workers.dev` URL.
+3. Rebuild the extension pointed at it:
+   ```
+   WS_URL=wss://avious-party-relay.<account>.workers.dev npm run build:ext
+   ```
+4. Zip `dist/extension/` and send to the friend; both sides reload the unpacked extension.
+5. Optional: `npm run deploy:landing` once the relay URL is committed somewhere referenceable.
 
 ## Open decisions for Avi
 
-- Whether to publish the built userscript via GitHub release vs raw URL on `main`.
-- v2 extension scoping — start after v1 has been used in a real watch session.
-- Whether to narrow the `@match *://*/*` once we know which target sites matter (currently injects on every site, with a runtime check that only mounts UI if a `<video>` is present in the top frame).
+- Whether to ship icons before the first share (Chrome will use a generic puzzle-piece icon otherwise — fine but unbranded).
+- Whether to keep the userscript target alive after the extension is the primary path, or drop it.
+- v2 service-worker WS migration so SPA navigation between episodes doesn't drop the connection. Defer until friends actually complain.
 
 ## Known unknowns / risks
 
-- Sites with nested iframes and CSP-blocked userscripts won't work; `docs/research/cineby-player-anatomy.md` has notes on one specific site's player as a worked example.
-- WS reconnect on close is naive (2s fixed); fine for v1, revisit if friends report flakiness.
-- No automated tests yet. `shared/sync.ts` is the obvious unit-test target.
+- Autoplay policy may block programmatic `.play()` on the receiver if they haven't clicked the page. Mitigation idea: mute-first-then-unmute on receiver's initial sync, since muted video bypasses autoplay block. Not implemented.
+- CSP-locked stream providers on Cineby still won't accept the content script; user works around it by switching source in the player.
+- WS reconnect on close is naive (fixed 2s). Fine for v1.
+- `dist/` is gitignored; built artifact lives only on the build machine. Friend-distribution today is a zipped folder, not a release pipeline.
