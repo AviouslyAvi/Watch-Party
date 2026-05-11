@@ -1,5 +1,5 @@
 (() => {
-  const urlInput = document.getElementById("cineby-url");
+  const urlInput = document.getElementById("video-url");
   const createBtn = document.getElementById("create-btn");
   const copyBtn = document.getElementById("copy-btn");
   const hint = document.getElementById("hint");
@@ -13,7 +13,7 @@
     } catch {
       return null;
     }
-    if (!/(^|\.)cineby\.sc$/i.test(u.hostname)) return null;
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
     const roomId = crypto.randomUUID().slice(0, 8);
     const h = new URLSearchParams(u.hash.replace(/^#/, ""));
     h.set("party", roomId);
@@ -29,7 +29,7 @@
   createBtn.addEventListener("click", () => {
     const link = buildRoomUrl(urlInput.value.trim());
     if (!link) {
-      setHint("That doesn't look like a cineby.sc URL.", false);
+      setHint("That doesn't look like a valid http(s) URL.", false);
       copyBtn.disabled = true;
       return;
     }

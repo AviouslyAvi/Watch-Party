@@ -5,13 +5,11 @@ import { mountPanel } from "./ui/panel";
 
 declare const WS_URL: string;
 
-const HOSTS = ["cineby.sc", "www.cineby.sc"];
 const isTopFrame = window === window.top;
-const isCinebyHost = HOSTS.includes(location.hostname);
 
 if (!isTopFrame) {
   runIframeBridge();
-} else if (isCinebyHost) {
+} else {
   bootTopFrame();
 }
 
@@ -189,7 +187,7 @@ function ensureName(): string {
   const k = "cp-name";
   let n = localStorage.getItem(k);
   if (!n) {
-    n = (prompt("Cineby Party — your display name?", "guest") || "guest").slice(0, 32);
+    n = (prompt("Avious Party — your display name?", "guest") || "guest").slice(0, 32);
     localStorage.setItem(k, n);
   }
   return n;
@@ -197,7 +195,7 @@ function ensureName(): string {
 
 function ensureRoom(): string {
   const m = location.hash.match(/party=([\w-]+)/);
-  if (m) return m[1];
+  if (m && m[1]) return m[1];
   const id = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
   const h = new URLSearchParams(location.hash.replace(/^#/, ""));
   h.set("party", id);

@@ -8,7 +8,7 @@ type FromIframe =
   | { kind: "videoEvent"; event: "play" | "pause" | "seek"; at: number; paused: boolean }
   | { kind: "videoState"; at: number; paused: boolean; hasVideo: boolean };
 
-const TAG = "__cinebyParty__";
+const TAG = "__aviousParty__";
 
 export function runIframeBridge() {
   let video: HTMLVideoElement | null = null;

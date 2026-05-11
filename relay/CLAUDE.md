@@ -28,7 +28,7 @@ wscat -c "ws://localhost:8787/ws?room=test"
 ## Deploy
 
 ```
-wrangler deploy            # → cineby-party-relay.<account>.workers.dev
+wrangler deploy            # → avious-party-relay.<account>.workers.dev
 ```
 
 The userscript reads its WS URL from a build-time env var (`WS_URL`), so deploying doesn't require touching client code — just rebuild with the prod URL.

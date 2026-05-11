@@ -17,5 +17,5 @@ const result = await build({
 });
 
 const js = result.outputFiles[0].text;
-writeFileSync("dist/cineby-party.user.js", banner + "\n" + js);
-console.log(`✓ dist/cineby-party.user.js (WS_URL=${WS_URL})`);
+writeFileSync("dist/avious-party.user.js", banner + "\n" + js);
+console.log(`✓ dist/avious-party.user.js (WS_URL=${WS_URL})`);

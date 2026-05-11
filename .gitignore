@@ -4,4 +4,5 @@ dist/
 .dev.vars
 .DS_Store
 *.log
-landing/cineby-party.user.js
+landing/avious-party.user.js
+.claude/

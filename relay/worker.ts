@@ -8,7 +8,7 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname !== "/ws") {
-      return new Response("cineby-party relay", { status: 200 });
+      return new Response("avious-party relay", { status: 200 });
     }
     const room = url.searchParams.get("room");
     if (!room) return new Response("missing room", { status: 400 });

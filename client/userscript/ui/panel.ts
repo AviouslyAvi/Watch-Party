@@ -16,7 +16,7 @@ export interface PanelHooks {
 
 export function mountPanel(hooks: PanelHooks) {
   const host = document.createElement("div");
-  host.id = "cineby-party-panel";
+  host.id = "avious-party-panel";
   host.style.cssText = `
     position: fixed; right: 16px; bottom: 16px; width: 280px;
     background: rgba(20,20,22,0.95); color: #eee; font: 13px system-ui, sans-serif;
@@ -26,7 +26,7 @@ export function mountPanel(hooks: PanelHooks) {
   `;
   host.innerHTML = `
     <div id="cp-header" style="padding:8px 10px;border-bottom:1px solid #333;cursor:move;display:flex;justify-content:space-between;align-items:center;">
-      <span>🎬 Cineby Party</span>
+      <span>🎬 Avious Party</span>
       <button id="cp-collapse" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;">–</button>
     </div>
     <div id="cp-body" style="display:flex;flex-direction:column;min-height:0;">

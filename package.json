@@ -1,14 +1,14 @@
 {
-  "name": "cineby-party",
+  "name": "avious-party",
   "version": "0.1.0",
   "private": true,
-  "description": "Teleparty-style synchronized watch party for cineby.sc",
+  "description": "Teleparty-style synchronized watch party for any site with a video player.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "dev:relay": "wrangler dev --config relay/wrangler.toml",
     "deploy:relay": "wrangler deploy --config relay/wrangler.toml",
-    "deploy:landing": "cp dist/cineby-party.user.js landing/cineby-party.user.js && wrangler pages deploy landing --project-name cineby-party",
+    "deploy:landing": "cp dist/avious-party.user.js landing/avious-party.user.js && wrangler pages deploy landing --project-name avious-party",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

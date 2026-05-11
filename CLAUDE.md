@@ -1,6 +1,6 @@
-# cineby-party — root router (Layer 1)
+# avious-party — root router (Layer 1)
 
-You are working in the **cineby-party** repo: a Teleparty-style synchronized watch party for [cineby.sc](https://www.cineby.sc/). Ships as a Tampermonkey userscript (v1) backed by a Cloudflare Worker relay, with a Chrome extension planned for v2.
+You are working in the **avious-party** repo: a Teleparty-style synchronized watch party for any site with a video player. Ships as a Tampermonkey userscript (v1) backed by a Cloudflare Worker relay, with a Chrome extension planned for v2.
 
 ## Floor plan
 
@@ -31,7 +31,7 @@ You are working in the **cineby-party** repo: a Teleparty-style synchronized wat
 
 - Decision logs: `docs/decisions/YYYY-MM-DD-<slug>.md`
 - Research notes: `docs/research/<topic>.md`
-- Built userscript: `dist/cineby-party.user.js` (gitignored; only tagged releases land in `releases/`)
+- Built userscript: `dist/avious-party.user.js` (gitignored; only tagged releases land in `releases/`)
 - Branches: `feat/<slug>`, `fix/<slug>`
 - Commit style: imperative, no Claude co-author tag unless the user asks.
 

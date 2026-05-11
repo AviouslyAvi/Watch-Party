@@ -1,10 +1,8 @@
 // ==UserScript==
-// @name         Cineby Party
-// @namespace    https://github.com/aviouslyavi/cineby-party
+// @name         Avious Party
+// @namespace    https://github.com/aviouslyavi/avious-party
 // @version      0.1.0
-// @description  Teleparty-style synchronized watch party for cineby.sc
-// @match        https://www.cineby.sc/*
-// @match        https://cineby.sc/*
+// @description  Teleparty-style synchronized watch party for any site with a video player
 // @match        *://*/*
 // @run-at       document-idle
 // @grant        none

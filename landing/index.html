@@ -3,28 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Cineby Party — watch together on cineby.sc</title>
-<meta name="description" content="Teleparty-style synchronized watch party for cineby.sc. Free, open source." />
+<title>Avious Party — watch together on any site with a video player</title>
+<meta name="description" content="Teleparty-style synchronized watch party for any site with a video player. Free, open source." />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <main>
   <header>
-    <h1>🎬 Cineby Party</h1>
-    <p class="tag">Sync play, pause &amp; seek for everyone watching on <a href="https://www.cineby.sc/" target="_blank" rel="noopener">cineby.sc</a>. Chat included. No accounts.</p>
+    <h1>🎬 Avious Party</h1>
+    <p class="tag">Sync play, pause &amp; seek for everyone watching the same page. Works on any site with a video player. Chat included. No accounts.</p>
   </header>
 
   <section class="step">
     <h2><span class="num">1</span> Install the userscript</h2>
     <p>You'll need <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Tampermonkey</a> (free, Chrome / Firefox / Safari / Edge). Then click:</p>
-    <p><a class="btn primary" href="cineby-party.user.js">Install Cineby Party</a></p>
+    <p><a class="btn primary" href="avious-party.user.js">Install Avious Party</a></p>
     <p class="hint">Tampermonkey will prompt you to confirm. You only do this once.</p>
   </section>
 
   <section class="step">
     <h2><span class="num">2</span> Start a watch party</h2>
-    <label for="cineby-url">Paste a cineby.sc movie or show URL:</label>
-    <input id="cineby-url" type="url" placeholder="https://www.cineby.sc/movie/12345" autocomplete="off" />
+    <label for="video-url">Paste the URL of any page with a video player:</label>
+    <input id="video-url" type="url" placeholder="https://example.com/watch/12345" autocomplete="off" />
     <p>
       <button class="btn primary" id="create-btn">Create room &amp; open</button>
       <button class="btn" id="copy-btn" disabled>Copy invite link</button>
@@ -40,10 +40,10 @@
   <footer>
     <p>
       Open source &middot;
-      <a href="https://github.com/AviouslyAvi/cineby-party" target="_blank" rel="noopener">GitHub</a> &middot;
-      <a href="https://github.com/AviouslyAvi/cineby-party/issues" target="_blank" rel="noopener">Report a bug</a>
+      <a href="https://github.com/AviouslyAvi/avious-party" target="_blank" rel="noopener">GitHub</a> &middot;
+      <a href="https://github.com/AviouslyAvi/avious-party/issues" target="_blank" rel="noopener">Report a bug</a>
     </p>
-    <p class="tiny">Cineby Party is an independent project and is not affiliated with cineby.sc.</p>
+    <p class="tiny">Avious Party is an independent project. Works on any site that exposes a standard HTML5 video element.</p>
   </footer>
 </main>
 <script src="app.js"></script>
