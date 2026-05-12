@@ -1,42 +1,55 @@
-# avious-party — root router (Layer 1)
+# Watch-Party — router (Layer 1)
 
-You are working in the **avious-party** repo: a Teleparty-style synchronized watch party for any site with a video player. Ships as a Tampermonkey userscript (v1) backed by a Cloudflare Worker relay, with a Chrome extension planned for v2.
+Teleparty-style synchronized watch party for **any site with a video player**. Ships as a Tampermonkey userscript (v1) + Chrome MV3 extension (v2), backed by a Cloudflare Worker + Durable Object relay. TypeScript monorepo, no framework.
 
 ## Floor plan
 
-| Workspace          | What lives here                                                    | When to enter                                     |
-| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------- |
-| `shared/`          | Pure sync engine + protocol types. No DOM. No network.             | Editing play/pause/seek logic or message shapes.  |
-| `client/userscript/` | Tampermonkey userscript: video hooks, iframe bridge, floating UI. | Editing anything the user sees in the browser.    |
-| `client/extension/` | (v2) MV3 Chrome extension wrapper. Empty in v1.                   | When v1 ships and you're starting the extension.  |
-| `relay/`           | Cloudflare Worker + Durable Object. Room state, broadcast, perms.  | Editing room logic, permissions, or deploy.       |
-| `landing/`         | Static companion site (Cloudflare Pages). Install + room creator.  | Changing onboarding flow or marketing copy.       |
-| `docs/`            | Decisions, research notes, handoff.                                | Logging a decision or resuming from a new chat.   |
+| Workspace            | What lives there                                                       | Room file                       |
+| -------------------- | ---------------------------------------------------------------------- | ------------------------------- |
+| `shared/`            | Pure sync engine + protocol types. No DOM, no network.                 | `shared/CONTEXT.md`             |
+| `client/`            | Browser-side: userscript (v1) + MV3 extension (v2). Video hooks, UI.   | `client/CONTEXT.md`             |
+| `relay/`             | Cloudflare Worker + Durable Object. Room state, broadcast, permissions.| `relay/CONTEXT.md`              |
+| `landing/`           | Static onboarding site (Cloudflare Pages). Install + room creator.     | `landing/CONTEXT.md`            |
+| `docs/`              | Decisions, research, the active `HANDOFF.md`.                          | `docs/CONTEXT.md`               |
 
-**Always** read the `CLAUDE.md` inside a workspace before editing files there. It contains workspace-specific pipeline rules.
+The legacy per-room `CLAUDE.md` files are still present for backward compatibility — they say the same things as the `CONTEXT.md` next to them.
 
 ## Routing table
 
-| Task                                  | Read                                                                  | Skip                          | Skills/MCP                |
-| ------------------------------------- | --------------------------------------------------------------------- | ----------------------------- | ------------------------- |
-| Edit sync logic (play/pause/seek)     | `shared/CLAUDE.md`, `shared/sync.ts`, `shared/protocol.ts`            | `client/extension/`, `docs/`  | —                         |
-| Debug video element detection         | `client/CLAUDE.md`, `client/userscript/main.ts`, `iframe-bridge.ts`   | `relay/`, `shared/`           | playwright                |
-| Change room/permission server logic   | `relay/CLAUDE.md`, `relay/room.ts`, `relay/worker.ts`                 | `client/`                     | —                         |
-| Build & release a new userscript      | `client/CLAUDE.md`, `build.mjs`, `client/userscript/banner.txt`       | `relay/`                      | —                         |
-| Start v2 extension                    | `client/CLAUDE.md`, `client/extension/`                               | `client/userscript/main.ts`   | —                         |
-| Edit the landing page / onboarding    | `landing/CLAUDE.md`, `landing/index.html`, `landing/app.js`           | `shared/`, `relay/`           | —                         |
-| Resume work in a new chat             | `docs/HANDOFF.md`                                                     | everything else               | —                         |
+| Task                                       | Read                                                                        | Skip                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------- | --------------------------------------- |
+| Edit sync logic (play/pause/seek/drift)    | `shared/CONTEXT.md`, `shared/sync.ts`, `shared/protocol.ts`                 | `client/extension/`, `docs/`            |
+| Debug video element / iframe detection     | `client/CONTEXT.md`, `client/userscript/main.ts`, `iframe-bridge.ts`        | `relay/`, `shared/`                     |
+| Change room / permission server logic      | `relay/CONTEXT.md`, `relay/room.ts`, `relay/worker.ts`                      | `client/`                               |
+| Build + release a new userscript           | `client/CONTEXT.md`, `build.mjs`, `client/userscript/banner.txt`            | `relay/`                                |
+| Work on v2 MV3 extension                   | `client/CONTEXT.md`, `client/extension/`                                    | `client/userscript/main.ts`             |
+| Onboarding flow / landing page             | `landing/CONTEXT.md`, `landing/index.html`, `landing/app.js`                | `shared/`, `relay/`                     |
+| Resume from a prior chat                   | `docs/HANDOFF.md`                                                           | everything else                         |
+| Log a decision or research note            | `docs/CONTEXT.md`                                                           | code workspaces                         |
 
 ## Naming conventions
 
 - Decision logs: `docs/decisions/YYYY-MM-DD-<slug>.md`
 - Research notes: `docs/research/<topic>.md`
-- Built userscript: `dist/avious-party.user.js` (gitignored; only tagged releases land in `releases/`)
-- Branches: `feat/<slug>`, `fix/<slug>`
-- Commit style: imperative, no Claude co-author tag unless the user asks.
+- Built userscript: `dist/avious-party.user.js` (gitignored).
+- Built extension: `dist/extension/` (gitignored; "Load unpacked" target).
+- Branches: `feat/<slug>`, `fix/<slug>`.
+- Commits: imperative. No Claude co-author tag unless asked.
 
 ## Hard rules
 
-- `shared/` must stay DOM-free and network-free. If you want a `document` or a `WebSocket`, you're in the wrong workspace.
-- Never bundle the production relay URL into source. Read it from `WS_URL` build env, fall back to `ws://localhost:8787` for dev.
-- Don't commit `dist/`. Don't commit `.dev.vars` or any Cloudflare secrets.
+- `shared/` must stay DOM-free and network-free. If you need `document` or `WebSocket`, you're in the wrong workspace.
+- Never bundle the production relay URL into source. Read `WS_URL` from build env; fall back to `ws://localhost:8787` for dev.
+- Don't commit `dist/`, `.dev.vars`, or any Cloudflare secrets.
+
+## Commands
+
+```bash
+npm run dev:relay                  # ws://localhost:8787
+npm run build                      # → dist/avious-party.user.js  + dist/extension/
+npm run build:user                 # userscript only
+npm run build:ext                  # extension only
+WS_URL=wss://... npm run build     # prod build with relay URL baked in
+npm run deploy:relay               # wrangler deploy
+npm run deploy:landing             # wrangler pages deploy landing/
+```

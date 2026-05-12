@@ -22,23 +22,35 @@ There's also a companion landing page (Cloudflare Pages) that hosts the install 
 
 ```bash
 npm install
-npm run dev:relay         # ws://localhost:8787
-WS_URL=ws://localhost:8787 npm run build   # → dist/avious-party.user.js
+npm run dev:relay                              # ws://localhost:8787
+WS_URL=ws://localhost:8787 npm run build       # → dist/avious-party.user.js + dist/extension/
+npm run build:user                             # userscript only
+npm run build:ext                              # MV3 extension only (v2, in progress)
+npm run typecheck                              # tsc --noEmit
 ```
 
-Paste `dist/avious-party.user.js` into Tampermonkey's editor for fast iteration.
+Paste `dist/avious-party.user.js` into Tampermonkey's editor for fast iteration. For the MV3 build, point Chrome at `dist/extension/` via "Load unpacked".
 
 ## Deploy
 
 ```bash
-npm run deploy:relay      # → wss://avious-party-relay.<account>.workers.dev
+npm run deploy:relay                                          # → wss://avious-party-relay.<account>.workers.dev
 WS_URL=wss://avious-party-relay.<account>.workers.dev npm run build
-npm run deploy:landing    # → https://avious-party.pages.dev (or custom domain)
+npm run deploy:landing                                        # → https://avious-party.pages.dev (or custom domain)
 ```
+
+Never bake the production `WS_URL` into committed source — pass it through build env.
 
 ## Architecture
 
-See [`CLAUDE.md`](./CLAUDE.md) for the workspace map. TL;DR: `shared/` is the pure sync engine, `client/userscript/` wraps it for Tampermonkey, `relay/` is a Cloudflare Worker + Durable Object holding one room per session.
+See [`CLAUDE.md`](./CLAUDE.md) for the full workspace map and per-workspace `CONTEXT.md` files. TL;DR:
+
+- `shared/` — pure sync engine + protocol types. No DOM, no network.
+- `client/userscript/` — Tampermonkey wrapper (v1).
+- `client/extension/` — Chrome MV3 extension (v2, in progress).
+- `relay/` — Cloudflare Worker + Durable Object, one room per session.
+- `landing/` — static onboarding site on Cloudflare Pages.
+- `docs/` — decisions, research, active `HANDOFF.md`.
 
 ## Roadmap
 
