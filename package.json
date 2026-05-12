@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Teleparty-style synchronized watch party for any site with a video player.",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
