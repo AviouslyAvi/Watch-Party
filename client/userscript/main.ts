@@ -14,7 +14,7 @@ if (!isTopFrame) {
 }
 
 function bootTopFrame() {
-  const me = ensureName();
+  let me = loadStoredName() ?? "";
   const roomId = ensureRoom();
   const currentRoomUrl = () => roomLinkForCurrent(roomId);
 
@@ -39,7 +39,12 @@ function bootTopFrame() {
       send({ type: "chat", from: you, name: me, text, ts: Date.now() });
       panel.appendChat(me, text);
     },
-  });
+    onSubmitUsername: (name) => {
+      me = name;
+      localStorage.setItem("cp-name", name);
+      connect();
+    },
+  }, me || undefined);
 
   const video = makeTopFrameAdapter();
   const sync = createSyncClient({
@@ -72,7 +77,7 @@ function bootTopFrame() {
       setTimeout(connect, 2000);
     });
   }
-  connect();
+  if (me) connect();
 
   function handle(msg: WireMsg) {
     switch (msg.type) {
@@ -184,14 +189,9 @@ function makeTopFrameAdapter(): VideoAdapter {
   };
 }
 
-function ensureName(): string {
-  const k = "cp-name";
-  let n = localStorage.getItem(k);
-  if (!n) {
-    n = (prompt("Watch-Party — your display name?", "guest") || "guest").slice(0, 32);
-    localStorage.setItem(k, n);
-  }
-  return n;
+function loadStoredName(): string | null {
+  const n = localStorage.getItem("cp-name");
+  return n && n.trim() ? n.slice(0, 32) : null;
 }
 
 function ensureRoom(): string {

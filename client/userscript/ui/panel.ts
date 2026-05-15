@@ -12,9 +12,10 @@ export interface PanelHooks {
   onToggleFFA: (next: boolean) => void;
   onSendChat: (text: string) => void;
   onCopyLink: () => void;
+  onSubmitUsername: (name: string) => void;
 }
 
-export function mountPanel(hooks: PanelHooks) {
+export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   const host = document.createElement("div");
   host.id = "avious-party-panel";
   host.style.cssText = `
@@ -30,6 +31,12 @@ export function mountPanel(hooks: PanelHooks) {
       <button id="cp-collapse" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;">–</button>
     </div>
     <div id="cp-body" style="display:flex;flex-direction:column;min-height:0;">
+      <form id="cp-name-form" style="padding:10px;display:none;flex-direction:column;gap:8px;">
+        <label style="font-size:12px;color:#bbb;">Pick a display name to join chat</label>
+        <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;outline:none;font:inherit;"/>
+        <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
+      </form>
+      <div id="cp-main" style="display:flex;flex-direction:column;min-height:0;">
       <div style="padding:8px 10px;border-bottom:1px solid #2a2a2a;">
         <button id="cp-copy" style="width:100%;padding:6px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;">Copy room link</button>
       </div>
@@ -44,6 +51,7 @@ export function mountPanel(hooks: PanelHooks) {
         <input id="cp-input" placeholder="Say something…" style="flex:1;padding:8px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
         <button style="background:none;border:none;color:#2563eb;padding:0 10px;cursor:pointer;">Send</button>
       </form>
+      </div>
     </div>
   `;
   document.body.appendChild(host);
@@ -69,6 +77,34 @@ export function mountPanel(hooks: PanelHooks) {
   });
   const stop = (e: Event) => e.stopPropagation();
   for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+
+  const nameForm = $("#cp-name-form") as HTMLFormElement;
+  const nameInput = $("#cp-name-input") as HTMLInputElement;
+  const nameSubmit = $("#cp-name-submit") as HTMLButtonElement;
+  const mainWrap = $("#cp-main") as HTMLDivElement;
+  for (const ev of ["keydown", "keyup", "keypress"]) nameInput.addEventListener(ev, stop);
+  nameInput.addEventListener("input", () => {
+    const ok = nameInput.value.trim().length > 0;
+    nameSubmit.disabled = !ok;
+    nameSubmit.style.opacity = ok ? "1" : "0.5";
+  });
+  function revealChat() {
+    nameForm.style.display = "none";
+    mainWrap.style.display = "flex";
+  }
+  function showGate() {
+    mainWrap.style.display = "none";
+    nameForm.style.display = "flex";
+    setTimeout(() => nameInput.focus(), 0);
+  }
+  nameForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const n = nameInput.value.trim().slice(0, 32);
+    if (!n) return;
+    hooks.onSubmitUsername(n);
+    revealChat();
+  });
+  if (!initialUsername) showGate();
 
   // drag
   const header = $("#cp-header") as HTMLDivElement;
@@ -113,7 +149,7 @@ export function mountPanel(hooks: PanelHooks) {
     chat.scrollTop = chat.scrollHeight;
   }
 
-  return { setState, appendChat, appendSystem };
+  return { setState, appendChat, appendSystem, revealChat };
 }
 
 function escapeHtml(s: string) {
