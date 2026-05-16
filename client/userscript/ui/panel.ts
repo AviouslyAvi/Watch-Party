@@ -13,6 +13,7 @@ export interface PanelHooks {
   onToggleFFA: (next: boolean) => void;
   onSendChat: (text: string) => void;
   onCopyLink: () => void;
+  onShareForNonInstallers: () => void;
   onSubmitUsername: (name: string) => void;
   onSetKey: (key: string | null) => void;
 }
@@ -48,8 +49,9 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
       <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
     </form>
     <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
+      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;gap:6px;">
         <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
+        <button id="cp-share-onboard" title="Sends friends through install steps first" style="width:100%;padding:6px;background:transparent;color:#bbb;border:1px solid #333;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">Copy onboarding link</button>
       </div>
       <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
         <button id="cp-key-toggle" type="button" style="background:none;border:none;color:#bbb;cursor:pointer;padding:0;font:inherit;text-decoration:underline;">🔒 Add room key</button>
@@ -88,6 +90,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
 
   ($("#cp-copy") as HTMLButtonElement).addEventListener("click", () => hooks.onCopyLink());
+  ($("#cp-share-onboard") as HTMLButtonElement).addEventListener("click", () => hooks.onShareForNonInstallers());
   const ffa = $("#cp-ffa") as HTMLInputElement;
   ffa.addEventListener("change", () => hooks.onToggleFFA(ffa.checked));
   const form = $("#cp-form") as HTMLFormElement;

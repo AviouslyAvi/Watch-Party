@@ -9,10 +9,14 @@ declare const RELEASES_API: string;
 declare const RELEASES_URL: string;
 
 const isTopFrame = window === window.top;
+const LANDING_ORIGIN = "https://watch-party.pages.dev";
 
 if (!isTopFrame) {
   runIframeBridge();
 } else {
+  if (location.hostname === "watch-party.pages.dev") {
+    document.documentElement.dataset.watchPartyInstalled = "1";
+  }
   bootTopFrame();
 }
 
@@ -34,6 +38,13 @@ function bootTopFrame() {
       const url = currentRoomUrl();
       navigator.clipboard.writeText(url).then(
         () => panel.appendSystem("Room link copied."),
+        () => panel.appendSystem("Copy failed — link: " + url),
+      );
+    },
+    onShareForNonInstallers: () => {
+      const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
+      navigator.clipboard.writeText(url).then(
+        () => panel.appendSystem("Onboarding link copied — friends without the extension will see install steps."),
         () => panel.appendSystem("Copy failed — link: " + url),
       );
     },
@@ -247,6 +258,21 @@ function ensureRoom(): { roomId: string; passphrase: string | null } {
 function roomLinkForCurrent(id: string, passphrase: string | null): string {
   const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
   return `${location.origin}${location.pathname}${location.search}#${frag}`;
+}
+
+function wrapperLinkFor(videoLink: string, id: string, passphrase: string | null): string {
+  const bare = videoLink.split("#")[0] ?? videoLink;
+  const v = base64urlEncode(bare);
+  const parts = [`v=${v}`, `party=${id}`];
+  if (passphrase) parts.push(`key=${encodeURIComponent(passphrase)}`);
+  return `${LANDING_ORIGIN}/#${parts.join("&")}`;
+}
+
+function base64urlEncode(s: string): string {
+  return btoa(unescape(encodeURIComponent(s)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 function writeRoomFragment(id: string, passphrase: string | null) {
