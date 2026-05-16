@@ -1,20 +1,20 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-05-16
-Milestone: **v0.3.0 shipped + landing deep-link helper merged to main**
+Milestone: **v0.3.1 shipped — landing deep-link helper live on prod**
 
 ## Status
 
-v0.3.0 is live. Relay redeployed; extension released as a GitHub Releases zip. Landing deep-link helper (handoff item 3) merged to main as [f081741](https://github.com/AviouslyAvi/Watch-Party/commit/f081741) — not yet redeployed to Pages, and not yet cut as a tagged extension release.
+v0.3.1 is live. The landing deep-link helper already deployed automatically when [f081741](https://github.com/AviouslyAvi/Watch-Party/commit/f081741) merged to main (CI's `landing` job picked up the `landing/**` change and pushed to Cloudflare Pages). This session bumped `client/extension/manifest.json` to `0.3.1` and `client/userscript/banner.txt` to `0.3.1`, which triggered CI's `extension-release` job and auto-cut the [v0.3.1 GitHub release](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1) with the prod-built zip.
 
-### Landing deep-link helper — what's on main, not yet deployed
+Existing v0.3.0 userscript users now see Tampermonkey's update banner. Extension users on v0.3.0 need to reload-from-unpacked or refresh from the new zip — there's no auto-update channel.
 
-- Userscript panel now has a **"Copy onboarding link"** button under "Copy room link". It generates `https://watch-party.pages.dev/#v=<base64url(video-url)>&party=<id>&key=<pass>` — routes non-installers through the landing page first.
+### Landing deep-link helper — live in prod
+
+- Userscript panel has a **"Copy onboarding link"** button under "Copy room link". It generates `https://watch-party.pages.dev/#v=<base64url(video-url)>&party=<id>&key=<pass>` — routes non-installers through the landing page first instead of bouncing off a raw deep link.
 - Landing parses the `v/party/key` fragment, shows a "You've been invited to a watch party" hero with the decoded destination, hides Step 2 (create) / Step 3 (join blurb), and auto-forwards (1.5s, cancelable) when the extension's `data-watch-party-installed` marker is present.
 - Extension marker is set in [client/userscript/main.ts](../client/userscript/main.ts) at boot when `location.hostname === "watch-party.pages.dev"`. Works for both userscript and MV3 extension since both bundle the same entry.
-- Tested locally with a python static server + crafted hash — valid invite, broken-fragment, and step-hiding paths all verified.
-
-**Deploy needed:** `npm run build && npm run deploy:landing`. Optional: cut a v0.3.1 GitHub release for the new userscript button (or roll into v0.4.0).
+- Verified in prod by curling `https://watch-party.pages.dev/app.js` — byte-identical to `landing/app.js` on main (4954 bytes).
 
 ### Production endpoints
 
@@ -27,16 +27,15 @@ v0.3.0 is live. Relay redeployed; extension released as a GitHub Releases zip. L
 
 ## What shipped this session
 
-- **128-bit room IDs.** `ensureRoom()` in [client/userscript/main.ts](../client/userscript/main.ts) now generates 22-char base64url tokens via `randomToken(16)`. Old 8-hex-char rooms (32 bits) were scannable in principle; new rooms are not.
-- **Optional passphrase gate.** `Hello` carries an optional `passphrase` field (in [shared/protocol.ts](../shared/protocol.ts)). The relay pins the passphrase on first connection ([relay/room.ts](../relay/room.ts)); mismatched joiners get a `{type: "rejected", reason: "passphrase"}` and a 4001 close. Empty rooms reset the pin so admins can change/clear the key.
-- **Admin-only panel UI.** "🔒 Add room key" toggle under "Copy room link" in [client/userscript/ui/panel.ts](../client/userscript/ui/panel.ts). Submitting rewrites the URL fragment with `&key=` and force-closes the WS to re-pin on the relay.
-- **Docs updated.** [relay/CLAUDE.md](../relay/CLAUDE.md) supersedes the old "Don't add auth" rule.
+- **v0.3.1 release cut.** Bumped `client/extension/manifest.json` and `client/userscript/banner.txt` to `0.3.1`. CI's `extension-release` job rebuilt the MV3 extension against the prod relay (`wss://avious-party-relay.avibenabram.workers.dev`), zipped it, and published [Watch-Party v0.3.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1) (`watch-party-0.3.1.zip`, 7294 bytes). Existing v0.3.0 Tampermonkey users now see the update banner.
+- **Confirmed landing deep-link helper is already live in prod.** Prior session's HANDOFF said "not yet redeployed," but CI's `landing` job had auto-deployed on the f081741 merge. Verified by curling `https://watch-party.pages.dev/app.js` (4954 bytes, byte-identical to `landing/app.js` on main).
+- **Confirmed CI path filters work.** This push touched only `client/extension/manifest.json` and `client/userscript/banner.txt`, so the `relay` job was correctly skipped (no relay republish). Only `extension-release` ran.
 
 Commits on `main`:
-- `58ba6b2` — Harden rooms: 128-bit IDs + optional passphrase gate.
-- `cbe2e27` — v0.3.0: rebuild extension with room hardening.
+- `9bbe73f` — v0.3.1: ship landing deep-link helper + Copy onboarding link button.
+- `c7a7eae` — ci: sync extension-build/ for v0.3.1 (auto-pushed by CI).
 
-Release: [v0.3.0 — Room hardening](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.0).
+Release: [v0.3.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1). Earlier: [v0.3.0 — Room hardening](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.0).
 
 ## Threat model in plain terms
 
@@ -48,7 +47,7 @@ Release: [v0.3.0 — Room hardening](https://github.com/AviouslyAvi/Watch-Party/
 
 No blocker; pick one when next session opens:
 
-1. **Deploy the landing helper.** `npm run build && npm run deploy:landing` to push the invited-hero UI live on `watch-party.pages.dev`. Then manually verify on prod: paste an onboarding link into a profile without the extension → invited hero renders; install extension → reload → auto-forwards.
+1. **End-to-end smoke on v0.3.1 with two browser profiles.** Still owed from this session — couldn't be done from the agent. (a) Profile A: install v0.3.1 from the new release zip, open a video page, click **Copy onboarding link**, confirm clipboard has `https://watch-party.pages.dev/#v=…&party=…`. (b) Profile B: paste that link in a clean browser → invited hero renders, Step 1 visible, Step 2/3 hidden. Install extension, reload → status flips to "Extension detected — opening in 1.5s…", auto-forwards. Bonus: try a broken fragment (`#v=garbage&party=ABC`) → fallback hero; click during countdown → cancel banner.
 2. **Manual smoke test on prod for v0.3.0 room hardening.** Two browser profiles: (a) URL has 22-char `party=`, (b) "Add room key" reconnects with `&key=`, (c) wrong-key profile is rejected with the banner.
 3. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
 4. **Wrangler upgrade.** Currently 3.114.17 against `^3.90.0`; v4 is out and the CLI warns on every deploy.
@@ -63,4 +62,5 @@ No blocker; pick one when next session opens:
 - Autoplay policy may block programmatic `.play()` on the receiver if they haven't clicked the page. Mitigation idea: mute-first-then-unmute on receiver's initial sync (unimplemented).
 - CSP-locked stream providers on Cineby still won't accept the content script; user works around it by switching source.
 - WS reconnect on close is naive (fixed 2s). Fine for v1.
-- CI workflows (`e56ef06`, `bcaafc2`) exist now — deploy ran automatically on this push. Verify the auto-deploy didn't republish a stale relay (it shouldn't — the workflow builds from main).
+- CI's `deploy.yml` is now load-bearing: it auto-cuts a GitHub release whenever `client/extension/manifest.json` changes, and auto-deploys the landing page whenever `landing/**` changes. Don't bump the manifest version casually — it will publish.
+- Relay deploy is gated on `relay/**` or `shared/**` changes (verified this push). Safe to push code-only changes to client without republishing the relay.
