@@ -1,0 +1,138 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  WRANGLER_VERSION: "3.114.17"
+  PROD_WS_URL: "wss://avious-party-relay.avibenabram.workers.dev"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      landing: ${{ steps.filter.outputs.landing }}
+      relay: ${{ steps.filter.outputs.relay }}
+      extension_manifest: ${{ steps.filter.outputs.extension_manifest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            landing:
+              - 'landing/**'
+            relay:
+              - 'relay/**'
+              - 'shared/**'
+            extension_manifest:
+              - 'client/extension/manifest.json'
+
+  landing:
+    needs: changes
+    if: needs.changes.outputs.landing == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          command: pages deploy landing --project-name watch-party --branch main
+
+  relay:
+    needs: changes
+    if: needs.changes.outputs.relay == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
+          command: deploy --config relay/wrangler.toml
+
+  extension-release:
+    needs: changes
+    if: needs.changes.outputs.extension_manifest == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Read manifest version
+        id: ver
+        run: |
+          VERSION=$(jq -r .version client/extension/manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if release already exists
+        id: gate
+        run: |
+          if gh release view "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.ver.outputs.tag }} already exists, skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.exists == 'false'
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install deps
+        if: steps.gate.outputs.exists == 'false'
+        run: npm ci
+
+      - name: Build extension with prod WS_URL
+        if: steps.gate.outputs.exists == 'false'
+        run: WS_URL="$PROD_WS_URL" npm run build:ext
+
+      - name: Sync extension-build/
+        if: steps.gate.outputs.exists == 'false'
+        run: |
+          cp dist/extension/content.js extension-build/content.js
+          cp dist/extension/manifest.json extension-build/manifest.json
+
+      - name: Commit extension-build/ if changed
+        if: steps.gate.outputs.exists == 'false'
+        run: |
+          if git diff --quiet extension-build/; then
+            echo "No changes to extension-build/."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add extension-build/content.js extension-build/manifest.json
+            git commit -m "ci: sync extension-build/ for ${{ steps.ver.outputs.tag }} [skip ci]"
+            git push
+          fi
+
+      - name: Zip extension
+        if: steps.gate.outputs.exists == 'false'
+        run: |
+          cd dist/extension
+          zip -r "../../watch-party-${{ steps.ver.outputs.version }}.zip" .
+
+      - name: Create GitHub release
+        if: steps.gate.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            "watch-party-${{ steps.ver.outputs.version }}.zip" \
+            --title "Watch-Party ${{ steps.ver.outputs.tag }}" \
+            --generate-notes
