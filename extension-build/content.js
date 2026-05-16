@@ -158,8 +158,9 @@
       <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
     </form>
     <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
+      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;gap:6px;">
         <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
+        <button id="cp-share-onboard" title="Sends friends through install steps first" style="width:100%;padding:6px;background:transparent;color:#bbb;border:1px solid #333;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">Copy onboarding link</button>
       </div>
       <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
         <button id="cp-key-toggle" type="button" style="background:none;border:none;color:#bbb;cursor:pointer;padding:0;font:inherit;text-decoration:underline;">\u{1F512} Add room key</button>
@@ -195,6 +196,7 @@
       tab.textContent = collapsed ? "\u2039" : "\u203A";
     });
     $("#cp-copy").addEventListener("click", () => hooks.onCopyLink());
+    $("#cp-share-onboard").addEventListener("click", () => hooks.onShareForNonInstallers());
     const ffa = $("#cp-ffa");
     ffa.addEventListener("change", () => hooks.onToggleFFA(ffa.checked));
     const form = $("#cp-form");
@@ -297,9 +299,13 @@
 
   // client/userscript/main.ts
   var isTopFrame = window === window.top;
+  var LANDING_ORIGIN = "https://watch-party.pages.dev";
   if (!isTopFrame) {
     runIframeBridge();
   } else {
+    if (location.hostname === "watch-party.pages.dev") {
+      document.documentElement.dataset.watchPartyInstalled = "1";
+    }
     bootTopFrame();
   }
   function bootTopFrame() {
@@ -318,6 +324,13 @@
         const url = currentRoomUrl();
         navigator.clipboard.writeText(url).then(
           () => panel.appendSystem("Room link copied."),
+          () => panel.appendSystem("Copy failed \u2014 link: " + url)
+        );
+      },
+      onShareForNonInstallers: () => {
+        const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
+        navigator.clipboard.writeText(url).then(
+          () => panel.appendSystem("Onboarding link copied \u2014 friends without the extension will see install steps."),
           () => panel.appendSystem("Copy failed \u2014 link: " + url)
         );
       },
@@ -380,7 +393,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && latest !== `v${"0.3.0"}` && latest !== "0.3.0") {
+      if (latest && latest !== `v${"0.3.1"}` && latest !== "0.3.1") {
         panel.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
     });
@@ -516,6 +529,16 @@
   function roomLinkForCurrent(id, passphrase) {
     const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
     return `${location.origin}${location.pathname}${location.search}#${frag}`;
+  }
+  function wrapperLinkFor(videoLink, id, passphrase) {
+    const bare = videoLink.split("#")[0] ?? videoLink;
+    const v = base64urlEncode(bare);
+    const parts = [`v=${v}`, `party=${id}`];
+    if (passphrase) parts.push(`key=${encodeURIComponent(passphrase)}`);
+    return `${LANDING_ORIGIN}/#${parts.join("&")}`;
+  }
+  function base64urlEncode(s) {
+    return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
   function writeRoomFragment(id, passphrase) {
     const h = new URLSearchParams(location.hash.replace(/^#/, ""));
