@@ -6,7 +6,8 @@ Teleparty-style synchronized watch party for **any site with a video player**. S
 
 - Play / pause / seek sync between everyone in a room.
 - Admin model: first joiner is admin. Admin can flip a **Free-for-all controls** switch — when off, only admin drives playback (viewers' attempts snap back). When on, anyone can.
-- Right-edge sidebar with text chat, participant list, room link copy, and an in-app update banner when a new version ships.
+- Right-edge sidebar with text chat, participant list, room link copy, onboarding-link copy for non-installers, optional room passphrase, and an in-app update banner when a new version ships.
+- 128-bit room IDs and optional out-of-band passphrase — random scanners can't guess into your room.
 - Native player controls (source switcher, subtitles, quality) stay fully functional.
 
 ## Install (users)
@@ -25,7 +26,9 @@ See [`extension-build/README.md`](./extension-build/README.md) for the user-faci
 
 1. Open any page with a `<video>` element.
 2. The Watch-Party sidebar appears on the right edge. Enter a display name → **Join chat**.
-3. Click **Copy room link** and send it to a friend. They open the link with the extension installed → instant party.
+3. Click **Copy room link** and send it to a friend who already has the extension → instant party.
+4. Friend doesn't have it installed? Click **Copy onboarding link** instead — the link routes them through the landing page with install steps first, then forwards them into your party automatically once the extension is detected.
+5. Admin-only: click **🔒 Add room key** to set an out-of-band passphrase. Friends need both the new link and the key (sent separately) to join. Empty rooms reset the key.
 
 ### Updating
 
@@ -72,10 +75,47 @@ See [`CLAUDE.md`](./CLAUDE.md) for the full workspace map and per-workspace `CON
 - `extension-build/` — committed prebuilt extension wired to the production relay; what users load unpacked.
 - `docs/` — decisions, research, active `HANDOFF.md`.
 
+## Changelog
+
+### Unreleased — landing deep-link helper (on `main`, not yet redeployed)
+
+- `f081741` Add landing deep-link helper for non-installers — new "Copy onboarding link" button in the sidebar generates a wrapper URL through `watch-party.pages.dev` carrying the video URL + party id; landing parses the fragment, shows a tailored "You've been invited" hero, and auto-forwards when the extension's `data-watch-party-installed` marker is detected.
+
+### v0.3.0 — Room hardening (2026-05-16)
+
+- `cbe2e27` v0.3.0: rebuild extension with room hardening (passphrase + 128-bit IDs).
+- `58ba6b2` Harden rooms: 128-bit room IDs (22-char base64url tokens) + optional passphrase gate. Relay pins the passphrase on first connection; mismatched joiners get a `4001` close with a "Wrong room key" banner. Empty rooms reset the pin so admins can change or clear the key.
+
+### v0.2.x — CI/CD + distribution
+
+- `bcaafc2` docs: update CI/CD handoff to shipped state.
+- `e56ef06` ci: GitHub Actions workflows for typecheck + Cloudflare deploy.
+- `063685d` README: lead with extension install, demote userscript to legacy.
+- `d8f0b24` Document v0.2.0 ship + Cloudflare deploy + distribution decisions.
+- `4e9c6f1` Add handoff for GitHub Actions CI/CD setup.
+- `b666895` Landing: switch to extension distribution, rename Pages project.
+
+### v0.2.0 — MV3 extension (shipped)
+
+- `bb5f6d4` v0.2.0: in-extension update banner.
+- `8ef0134` Wire `extension-build/` to production relay.
+- `ff4eee2` Replace `prompt()` with in-panel name gate.
+- `67a3e10` Add prebuilt extension under `extension-build/`.
+- `9aadac9` Convert floating panel into right-edge sidebar.
+
+### Foundation
+
+- `670acda` Add AGPL-3.0 license.
+- `8254b4f` chore: gitignore secrets and env files.
+- `62e5bcb` docs: three-layer routing system (`CLAUDE.md` router + per-workspace `CONTEXT.md`).
+
 ## Roadmap
 
-- v0.2.0 (shipped): MV3 extension, right-edge sidebar, in-app name gate, in-extension update banner.
-- Next: service-worker WS to survive SPA episode changes, shared cursor, emoji reactions, optional Web Store listing.
+- Deploy the landing deep-link helper to Cloudflare Pages, then cut v0.3.1 (or roll into v0.4.0) so users get the new "Copy onboarding link" button via the update banner.
+- Service-worker WS to survive SPA episode changes.
+- Extension icon (still Chrome's puzzle-piece default).
+- Wrangler v4 upgrade.
+- Shared cursor, emoji reactions, optional Web Store listing.
 
 ## Caveats
 
