@@ -1,11 +1,20 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-05-16
-Milestone: **v0.3.0 — Room hardening shipped**
+Milestone: **v0.3.0 shipped + landing deep-link helper merged to main**
 
 ## Status
 
-v0.3.0 is live. Relay redeployed; extension released as a GitHub Releases zip. Friends on v0.2.0 will see the update banner next time they load a page.
+v0.3.0 is live. Relay redeployed; extension released as a GitHub Releases zip. Landing deep-link helper (handoff item 3) merged to main as [f081741](https://github.com/AviouslyAvi/Watch-Party/commit/f081741) — not yet redeployed to Pages, and not yet cut as a tagged extension release.
+
+### Landing deep-link helper — what's on main, not yet deployed
+
+- Userscript panel now has a **"Copy onboarding link"** button under "Copy room link". It generates `https://watch-party.pages.dev/#v=<base64url(video-url)>&party=<id>&key=<pass>` — routes non-installers through the landing page first.
+- Landing parses the `v/party/key` fragment, shows a "You've been invited to a watch party" hero with the decoded destination, hides Step 2 (create) / Step 3 (join blurb), and auto-forwards (1.5s, cancelable) when the extension's `data-watch-party-installed` marker is present.
+- Extension marker is set in [client/userscript/main.ts](../client/userscript/main.ts) at boot when `location.hostname === "watch-party.pages.dev"`. Works for both userscript and MV3 extension since both bundle the same entry.
+- Tested locally with a python static server + crafted hash — valid invite, broken-fragment, and step-hiding paths all verified.
+
+**Deploy needed:** `npm run build && npm run deploy:landing`. Optional: cut a v0.3.1 GitHub release for the new userscript button (or roll into v0.4.0).
 
 ### Production endpoints
 
@@ -39,9 +48,9 @@ Release: [v0.3.0 — Room hardening](https://github.com/AviouslyAvi/Watch-Party/
 
 No blocker; pick one when next session opens:
 
-1. **Manual smoke test on prod.** Load v0.3.0 in two browser profiles, verify: (a) URL has 22-char `party=`, (b) clicking "Add room key" reconnects with `&key=`, (c) second profile without `&key=` is rejected with the "Wrong room key" banner.
-2. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
-3. **Landing page deep-link helper.** When a friend opens a `#party=...` link without the extension installed, the landing page should detect the fragment and surface install instructions first.
+1. **Deploy the landing helper.** `npm run build && npm run deploy:landing` to push the invited-hero UI live on `watch-party.pages.dev`. Then manually verify on prod: paste an onboarding link into a profile without the extension → invited hero renders; install extension → reload → auto-forwards.
+2. **Manual smoke test on prod for v0.3.0 room hardening.** Two browser profiles: (a) URL has 22-char `party=`, (b) "Add room key" reconnects with `&key=`, (c) wrong-key profile is rejected with the banner.
+3. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
 4. **Wrangler upgrade.** Currently 3.114.17 against `^3.90.0`; v4 is out and the CLI warns on every deploy.
 
 ## Open decisions
