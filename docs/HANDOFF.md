@@ -1,7 +1,7 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-05-16
-Milestone: **v0.3.1 shipped — landing deep-link helper live on prod**
+Milestone: **v0.3.1 shipped — landing deep-link helper live on prod; wrangler upgraded to v4**
 
 ## Status
 
@@ -30,6 +30,7 @@ Existing v0.3.0 userscript users now see Tampermonkey's update banner. Extension
 - **v0.3.1 release cut.** Bumped `client/extension/manifest.json` and `client/userscript/banner.txt` to `0.3.1`. CI's `extension-release` job rebuilt the MV3 extension against the prod relay (`wss://avious-party-relay.avibenabram.workers.dev`), zipped it, and published [Watch-Party v0.3.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1) (`watch-party-0.3.1.zip`, 7294 bytes). Existing v0.3.0 Tampermonkey users now see the update banner.
 - **Confirmed landing deep-link helper is already live in prod.** Prior session's HANDOFF said "not yet redeployed," but CI's `landing` job had auto-deployed on the f081741 merge. Verified by curling `https://watch-party.pages.dev/app.js` (4954 bytes, byte-identical to `landing/app.js` on main).
 - **Confirmed CI path filters work.** This push touched only `client/extension/manifest.json` and `client/userscript/banner.txt`, so the `relay` job was correctly skipped (no relay republish). Only `extension-release` ran.
+- **Wrangler upgraded 3.114.17 → 4.92.0.** Bumped `wrangler` from `^3.90.0` to `^4.0.0` in `package.json` and refreshed the lockfile (resolved 4.92.0). Updated `WRANGLER_VERSION` in `.github/workflows/deploy.yml` to `4.92.0`. Verified locally: `wrangler --version` reports 4.92.0, `wrangler deploy --config relay/wrangler.toml --dry-run` parses the Durable Object binding cleanly with no deprecation warnings, `wrangler dev` boots the relay on `127.0.0.1:8787` and binds `env.ROOM` in local mode, `wrangler pages deploy --help` still shows the v3 flag shape (no script changes needed). `npm run typecheck` passes. Migration impact was minimal — repo has no KV/R2 (the v4 "local-mode-by-default" shift only affects those), no wildcard dynamic imports (esbuild 0.24 change), no legacy `publish`/`pages publish` commands. CI's `relay` and `landing` jobs are path-filtered so they'll skip on this commit; v4 will first exercise in CI on the next `relay/**` or `landing/**` change.
 
 Commits on `main`:
 - `9bbe73f` — v0.3.1: ship landing deep-link helper + Copy onboarding link button.
@@ -50,7 +51,7 @@ No blocker; pick one when next session opens:
 1. **End-to-end smoke on v0.3.1 with two browser profiles.** Still owed from this session — couldn't be done from the agent. (a) Profile A: install v0.3.1 from the new release zip, open a video page, click **Copy onboarding link**, confirm clipboard has `https://watch-party.pages.dev/#v=…&party=…`. (b) Profile B: paste that link in a clean browser → invited hero renders, Step 1 visible, Step 2/3 hidden. Install extension, reload → status flips to "Extension detected — opening in 1.5s…", auto-forwards. Bonus: try a broken fragment (`#v=garbage&party=ABC`) → fallback hero; click during countdown → cancel banner.
 2. **Manual smoke test on prod for v0.3.0 room hardening.** Two browser profiles: (a) URL has 22-char `party=`, (b) "Add room key" reconnects with `&key=`, (c) wrong-key profile is rejected with the banner.
 3. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
-4. **Wrangler upgrade.** Currently 3.114.17 against `^3.90.0`; v4 is out and the CLI warns on every deploy.
+4. ~~**Wrangler upgrade.**~~ Done — now on 4.92.0. First CI exercise will be the next `relay/**` or `landing/**` change.
 
 ## Open decisions
 

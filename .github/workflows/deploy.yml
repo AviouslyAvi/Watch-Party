@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  WRANGLER_VERSION: "3.114.17"
+  WRANGLER_VERSION: "4.92.0"
   PROD_WS_URL: "wss://avious-party-relay.avibenabram.workers.dev"
 
 jobs:
