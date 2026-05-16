@@ -129,7 +129,7 @@
 
   // client/userscript/ui/panel.ts
   var SIDEBAR_WIDTH = 320;
-  function mountPanel(hooks) {
+  function mountPanel(hooks, initialUsername) {
     const host = document.createElement("div");
     host.id = "avious-party-panel";
     host.style.cssText = `
@@ -149,20 +149,27 @@
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-weight:600;color:#f97316;">\u{1F3AC} Watch-Party</span>
     </div>
-    <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
-      <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
-    </div>
-    <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;">
-      <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
-        <input type="checkbox" id="cp-ffa"/> Free-for-all controls
-      </label>
-    </div>
-    <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;font-size:12px;color:#bbb;max-height:120px;overflow-y:auto;"></div>
-    <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:13px;min-height:0;"></div>
-    <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
-      <input id="cp-input" placeholder="Type a message\u2026" style="flex:1;padding:10px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
-      <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
+    <form id="cp-name-form" style="padding:12px;display:none;flex-direction:column;gap:8px;">
+      <label style="font-size:12px;color:#bbb;">Pick a display name to join chat</label>
+      <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;outline:none;font:inherit;"/>
+      <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
     </form>
+    <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
+        <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
+      </div>
+      <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;">
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+          <input type="checkbox" id="cp-ffa"/> Free-for-all controls
+        </label>
+      </div>
+      <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;font-size:12px;color:#bbb;max-height:120px;overflow-y:auto;"></div>
+      <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:13px;min-height:0;"></div>
+      <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
+        <input id="cp-input" placeholder="Type a message\u2026" style="flex:1;padding:10px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
+        <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
+      </form>
+    </div>
   `;
     document.body.appendChild(host);
     const $ = (id) => host.querySelector(id);
@@ -187,6 +194,33 @@
     });
     const stop = (e) => e.stopPropagation();
     for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+    const nameForm = $("#cp-name-form");
+    const nameInput = $("#cp-name-input");
+    const nameSubmit = $("#cp-name-submit");
+    const mainWrap = $("#cp-main");
+    for (const ev of ["keydown", "keyup", "keypress"]) nameInput.addEventListener(ev, stop);
+    nameInput.addEventListener("input", () => {
+      const ok = nameInput.value.trim().length > 0;
+      nameSubmit.disabled = !ok;
+      nameSubmit.style.opacity = ok ? "1" : "0.5";
+    });
+    function revealChat() {
+      nameForm.style.display = "none";
+      mainWrap.style.display = "flex";
+    }
+    function showGate() {
+      mainWrap.style.display = "none";
+      nameForm.style.display = "flex";
+      setTimeout(() => nameInput.focus(), 0);
+    }
+    nameForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const n = nameInput.value.trim().slice(0, 32);
+      if (!n) return;
+      hooks.onSubmitUsername(n);
+      revealChat();
+    });
+    if (!initialUsername) showGate();
     function setState(s) {
       const isAdmin = s.you === s.adminId;
       $("#cp-ffa-wrap").style.display = isAdmin ? "block" : "none";
@@ -209,7 +243,7 @@
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
-    return { setState, appendChat, appendSystem };
+    return { setState, appendChat, appendSystem, revealChat };
   }
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -223,7 +257,7 @@
     bootTopFrame();
   }
   function bootTopFrame() {
-    const me = ensureName();
+    let me = loadStoredName() ?? "";
     const roomId = ensureRoom();
     const currentRoomUrl = () => roomLinkForCurrent(roomId);
     let you = "";
@@ -245,8 +279,13 @@
       onSendChat: (text) => {
         send({ type: "chat", from: you, name: me, text, ts: Date.now() });
         panel.appendChat(me, text);
+      },
+      onSubmitUsername: (name) => {
+        me = name;
+        localStorage.setItem("cp-name", name);
+        connect();
       }
-    });
+    }, me || void 0);
     const video = makeTopFrameAdapter();
     const sync = createSyncClient({
       video,
@@ -258,7 +297,7 @@
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m));
     }
     function connect() {
-      ws = new WebSocket(`${"ws://localhost:8787"}/ws?room=${encodeURIComponent(roomId)}`);
+      ws = new WebSocket(`${"wss://avious-party-relay.avibenabram.workers.dev"}/ws?room=${encodeURIComponent(roomId)}`);
       ws.addEventListener("open", () => {
         send({ type: "hello", name: me, pathname: location.pathname, v: 1 });
       });
@@ -276,7 +315,7 @@
         setTimeout(connect, 2e3);
       });
     }
-    connect();
+    if (me) connect();
     function handle(msg) {
       switch (msg.type) {
         case "welcome":
@@ -380,14 +419,9 @@
       }
     };
   }
-  function ensureName() {
-    const k = "cp-name";
-    let n = localStorage.getItem(k);
-    if (!n) {
-      n = (prompt("Watch-Party \u2014 your display name?", "guest") || "guest").slice(0, 32);
-      localStorage.setItem(k, n);
-    }
-    return n;
+  function loadStoredName() {
+    const n = localStorage.getItem("cp-name");
+    return n && n.trim() ? n.slice(0, 32) : null;
   }
   function ensureRoom() {
     const m = location.hash.match(/party=([\w-]+)/);
