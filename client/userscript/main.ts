@@ -1,7 +1,9 @@
 import { createSyncClient, type VideoAdapter } from "../../shared/sync";
-import type { WireMsg, SyncMsg } from "../../shared/protocol";
+import type { WireMsg, SyncMsg, VideoChangeMsg } from "../../shared/protocol";
 import { runIframeBridge, IFRAME_TAG } from "./iframe-bridge";
 import { mountPanel } from "./ui/panel";
+import { loadSettings, getSettings, onSettingsChange, updateSettings } from "../extension/lib/settings";
+import { sameHost, watchVideoChanges } from "../extension/lib/video-watcher";
 
 declare const WS_URL: string;
 declare const VERSION: string;
@@ -13,14 +15,70 @@ const isTopFrame = window === window.top;
 if (!isTopFrame) {
   runIframeBridge();
 } else {
-  bootTopFrame();
+  void bootTopFrame();
 }
 
-function bootTopFrame() {
+async function bootTopFrame() {
+  await loadSettings();
+
+  // ---------------- WAKE GATING ----------------
+  // The extension is dormant unless one of these is true:
+  //   1) the URL hash carries a #party= signature (room link), OR
+  //   2) the user clicked "Start watch party on this page" in the popup.
+  // The master kill switch (master_enabled) short-circuits both.
+  // We re-evaluate on hashchange, on storage change, and on popup messages.
+
+  let session: Session | null = null;
+
+  function reevaluate() {
+    const s = getSettings();
+    const room = readRoomFragment();
+    const want = s.master_enabled && room.roomId !== null;
+    if (want && !session) {
+      session = startSession(room.roomId!, room.passphrase);
+    } else if (!want && session) {
+      session.dispose();
+      session = null;
+    }
+  }
+
+  window.addEventListener("hashchange", reevaluate);
+  onSettingsChange(reevaluate);
+  registerRuntimeMessageHandler({
+    onStart: () => {
+      // Write a new fragment and wake.
+      const id = randomToken(16);
+      writeRoomFragment(id, null);
+      reevaluate();
+      return currentRoomUrl(id, null);
+    },
+    getStatus: () => {
+      if (!session) return { inRoom: false, isHost: false, roomUrl: "", count: 0, hostName: null };
+      return session.statusSnapshot();
+    },
+    getCopyLink: () => session?.currentUrl() ?? "",
+  });
+
+  reevaluate();
+}
+
+interface SessionStatus {
+  inRoom: boolean;
+  isHost: boolean;
+  roomUrl: string;
+  count: number;
+  hostName: string | null;
+}
+
+interface Session {
+  dispose(): void;
+  statusSnapshot(): SessionStatus;
+  currentUrl(): string;
+}
+
+function startSession(roomId: string, initialPassphrase: string | null): Session {
   let me = loadStoredName() ?? "";
-  const initial = ensureRoom();
-  const roomId = initial.roomId;
-  let passphrase: string | null = initial.passphrase;
+  let passphrase: string | null = initialPassphrase;
   const currentRoomUrl = () => roomLinkForCurrent(roomId, passphrase);
 
   let you = "";
@@ -28,6 +86,7 @@ function bootTopFrame() {
   let freeForAll = false;
   let ws: WebSocket | null = null;
   let rejected = false;
+  let participants: import("../../shared/protocol").Participant[] = [];
 
   const panel = mountPanel({
     onCopyLink: () => {
@@ -43,7 +102,7 @@ function bootTopFrame() {
     },
     onSendChat: (text) => {
       send({ type: "chat", from: you, name: me, text, ts: Date.now() });
-      panel.appendChat(me, text);
+      panel.appendChat(me, text, { fromMe: true });
     },
     onSubmitUsername: (name) => {
       me = name;
@@ -58,9 +117,10 @@ function bootTopFrame() {
           ? "🔒 Room key set. Share the new link — friends will need to reconnect with it."
           : "🔓 Room key cleared.",
       );
-      // Force a reconnect so the relay re-pins the new passphrase.
-      // Empty rooms reset their pin, so close + reconnect gives us a clean state if we were alone.
       if (ws) try { ws.close(); } catch {}
+    },
+    onFollowVideo: (url) => {
+      location.assign(url);
     },
   }, me || undefined);
 
@@ -70,6 +130,20 @@ function bootTopFrame() {
     send: (m) => send(m),
     isAdmin: () => you === adminId,
     freeForAll: () => freeForAll,
+  });
+
+  // Watch for host video changes (same-domain only). Only broadcast if admin.
+  const watcher = watchVideoChanges((url) => {
+    // Always pin the party fragment so receivers stay in the same room.
+    const u = new URL(url);
+    const h = new URLSearchParams(u.hash.replace(/^#/, ""));
+    h.set("party", roomId);
+    if (passphrase) h.set("key", passphrase);
+    u.hash = h.toString();
+    if (you && you === adminId) {
+      const msg: VideoChangeMsg = { type: "videoChange", url: u.toString(), ts: Date.now() };
+      send(msg);
+    }
   });
 
   function send(m: WireMsg) {
@@ -93,18 +167,22 @@ function bootTopFrame() {
       handle(msg);
     });
     ws.addEventListener("close", () => {
-      if (rejected) return;
+      if (rejected || disposed) return;
       panel.appendSystem("Disconnected. Reconnecting in 2s…");
       setTimeout(connect, 2000);
     });
   }
   if (me) connect();
 
-  checkForUpdate().then((latest) => {
+  void checkForUpdate().then((latest) => {
     if (latest && latest !== `v${VERSION}` && latest !== VERSION) {
       panel.showUpdateBanner(latest, RELEASES_URL);
     }
   });
+
+  function hostName(): string | null {
+    return participants.find((p) => p.isAdmin)?.name ?? null;
+  }
 
   function handle(msg: WireMsg) {
     switch (msg.type) {
@@ -112,7 +190,8 @@ function bootTopFrame() {
         you = msg.you;
         adminId = msg.adminId;
         freeForAll = msg.freeForAll;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+        participants = msg.participants;
+        panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) {
           sync.startHeartbeat();
           panel.appendSystem("You are the admin.");
@@ -121,7 +200,8 @@ function bootTopFrame() {
         return;
       case "participants":
         adminId = msg.adminId;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+        participants = msg.participants;
+        panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) sync.startHeartbeat();
         return;
       case "ffa":
@@ -153,8 +233,44 @@ function bootTopFrame() {
       case "state":
         sync.applyRemote(msg);
         return;
+      case "videoChange": {
+        // Same-host only — anything else is dropped silently.
+        if (!sameHost(msg.url)) {
+          panel.appendSystem(`⚠️ ${hostName() ?? "Host"} switched to a different site — staying put.`);
+          return;
+        }
+        if (getSettings().auto_follow_video) {
+          panel.appendSystem(`▶ Following ${hostName() ?? "host"} to the next video…`);
+          location.assign(msg.url);
+        } else {
+          panel.showFollowToast(msg.url, hostName());
+        }
+        return;
+      }
     }
   }
+
+  let disposed = false;
+  function dispose() {
+    disposed = true;
+    try { watcher.dispose(); } catch {}
+    try { sync.dispose(); } catch {}
+    if (ws) try { ws.close(); } catch {}
+    const host = document.getElementById("avious-party-host");
+    if (host?.parentNode) host.parentNode.removeChild(host);
+  }
+
+  return {
+    dispose,
+    statusSnapshot: (): SessionStatus => ({
+      inRoom: true,
+      isHost: !!you && you === adminId,
+      roomUrl: currentRoomUrl(),
+      count: participants.length,
+      hostName: hostName(),
+    }),
+    currentUrl: () => currentRoomUrl(),
+  };
 }
 
 function makeTopFrameAdapter(): VideoAdapter {
@@ -230,24 +346,18 @@ function loadStoredName(): string | null {
   return n && n.trim() ? n.slice(0, 32) : null;
 }
 
-function ensureRoom(): { roomId: string; passphrase: string | null } {
+function readRoomFragment(): { roomId: string | null; passphrase: string | null } {
   const h = new URLSearchParams(location.hash.replace(/^#/, ""));
-  const existing = h.get("party");
+  const id = h.get("party");
   const key = h.get("key");
-  if (existing) {
-    return { roomId: existing, passphrase: key && key.length ? key : null };
-  }
-  // New room: ~128 bits of entropy, base64url, no padding.
-  const id = randomToken(16);
-  h.set("party", id);
-  history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
-  return { roomId: id, passphrase: null };
+  return { roomId: id || null, passphrase: key && key.length ? key : null };
 }
 
 function roomLinkForCurrent(id: string, passphrase: string | null): string {
   const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
   return `${location.origin}${location.pathname}${location.search}#${frag}`;
 }
+function currentRoomUrl(id: string, passphrase: string | null) { return roomLinkForCurrent(id, passphrase); }
 
 function writeRoomFragment(id: string, passphrase: string | null) {
   const h = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -281,4 +391,39 @@ async function checkForUpdate(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+interface RuntimeHandlers {
+  onStart: () => string;
+  getStatus: () => SessionStatus;
+  getCopyLink: () => string;
+}
+
+function registerRuntimeMessageHandler(h: RuntimeHandlers) {
+  const c = (globalThis as { chrome?: { runtime?: { onMessage?: { addListener: (cb: (msg: unknown, sender: unknown, send: (r: unknown) => void) => boolean | void) => void } } } }).chrome;
+  const listener = c?.runtime?.onMessage;
+  if (!listener) return;
+  listener.addListener((msg, _sender, sendResponse) => {
+    if (!msg || typeof msg !== "object") return false;
+    const m = msg as { kind?: string };
+    switch (m.kind) {
+      case "ap.status":
+        sendResponse(h.getStatus());
+        return true;
+      case "ap.start": {
+        const url = h.onStart();
+        sendResponse({ roomUrl: url });
+        return true;
+      }
+      case "ap.copy":
+        sendResponse({ roomUrl: h.getCopyLink() });
+        return true;
+      case "ap.masterChanged":
+        // Trigger re-evaluation by reading settings again.
+        void updateSettings({}); // no-op write to fire onSettingsChange via cache update? Skip — onChanged fires naturally.
+        return false;
+      default:
+        return false;
+    }
+  });
 }

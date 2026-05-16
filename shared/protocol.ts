@@ -16,6 +16,13 @@ export type ChatMsg = {
   ts: number;
 };
 
+// Admin-only. URL should already contain the #party= fragment so receivers stay in the room.
+export type VideoChangeMsg = {
+  type: "videoChange";
+  url: string;
+  ts: number;
+};
+
 export type PresenceMsg =
   | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
   | { type: "welcome"; you: ClientId; adminId: ClientId; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
@@ -27,7 +34,7 @@ export type PresenceMsg =
 
 export type Participant = { id: ClientId; name: string; isAdmin: boolean };
 
-export type WireMsg = SyncMsg | ChatMsg | PresenceMsg;
+export type WireMsg = SyncMsg | ChatMsg | VideoChangeMsg | PresenceMsg;
 
 export function isSyncMsg(m: WireMsg): m is SyncMsg {
   return m.type === "play" || m.type === "pause" || m.type === "seek" || m.type === "state";

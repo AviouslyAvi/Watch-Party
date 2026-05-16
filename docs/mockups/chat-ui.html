@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Watch-Party — Chat polish + extension controls — mockups</title>
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<style>
+  /* ---------- Brand fonts (bundled in extension at impl time) ---------- */
+  @font-face {
+    font-family: "New Astro";
+    src: url("fonts/New_Astro_Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Mosvita";
+    src: url("fonts/mosvita-regular.otf") format("opentype");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Mosvita";
+    src: url("fonts/mosvita-medium.otf") format("opentype");
+    font-weight: 500;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Mosvita";
+    src: url("fonts/mosvita-bold.otf") format("opentype");
+    font-weight: 700;
+    font-display: swap;
+  }
+
+  /* ---------- AVIOUS palette (from Brand Visual Design 2026-03-24) ---------- */
+  :root {
+    --oxblood: #4E0000;
+    --terracotta: #A24617;
+    --sage: #797028;
+    --midnight: #1A243D;
+    --mustard: #D39203;
+    --espresso: #241916;
+    --cotton: #F1ECE1;
+    --espresso-soft: #2e211d;
+    --cotton-soft: #e7e0d1;
+    --ink-dim: #cdc4b3;
+  }
+
+  /* ---------- Page chrome ---------- */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: #14110f;
+    color: var(--cotton);
+    font-family: "Mosvita", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background:
+      radial-gradient(circle at 20% 0%, rgba(162, 70, 23, 0.10), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(26, 36, 61, 0.18), transparent 55%),
+      #14110f;
+    min-height: 100vh;
+    padding: 64px 48px 120px;
+  }
+  /* Subtle film-grain overlay (whole page) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.92  0 0 0 0 0.88  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+    opacity: 0.45;
+    z-index: 9999;
+  }
+
+  /* ---------- Document layout ---------- */
+  .doc {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .doc-head {
+    border-bottom: 1px solid rgba(241, 236, 225, 0.12);
+    padding-bottom: 32px;
+    margin-bottom: 56px;
+  }
+  .doc-head h1 {
+    font-family: "New Astro", "Mosvita", sans-serif;
+    font-weight: 400;
+    font-size: 38px;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: var(--cotton);
+  }
+  .doc-head p { margin: 0; color: var(--ink-dim); max-width: 720px; }
+  .kicker {
+    font-family: "Mosvita", sans-serif;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mustard);
+    margin: 0 0 12px;
+  }
+  section.row {
+    margin: 0 0 80px;
+  }
+  section.row > .row-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  section.row > .row-head h2 {
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 22px;
+    margin: 0;
+    color: var(--cotton);
+    letter-spacing: 0.01em;
+  }
+  section.row > .row-head .note {
+    color: var(--ink-dim);
+    font-size: 13px;
+  }
+  .stage {
+    background:
+      linear-gradient(180deg, #1a1714 0%, #110f0d 100%);
+    border: 1px solid rgba(241, 236, 225, 0.08);
+    border-radius: 20px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage.host-frame {
+    min-height: 460px;
+    background:
+      linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+  }
+  .stage.host-frame::after {
+    /* faux YouTube-like player block, just for context */
+    content: "";
+    position: absolute;
+    left: 28px; top: 28px;
+    right: 28px; bottom: 28px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 12px, transparent 12px 24px);
+    border-radius: 12px;
+    pointer-events: none;
+  }
+  .stage.host-frame .stage-label {
+    position: absolute; left: 44px; top: 44px;
+    color: rgba(241,236,225,0.35);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    z-index: 1;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  /* ===========================================================
+     CHAT SIDEBAR — themed via CSS custom properties.
+     A theme wrapper sets --bg/--fg/--accent/--muted, the panel reads them.
+     =========================================================== */
+  .theme {
+    --bg: var(--midnight);
+    --bg-edge: rgba(0,0,0,0.35);
+    --fg: var(--cotton);
+    --fg-dim: rgba(241, 236, 225, 0.65);
+    --accent: var(--mustard);
+    --accent-soft: rgba(211, 146, 3, 0.18);
+    --rail: rgba(241, 236, 225, 0.10);
+    --bubble: rgba(241, 236, 225, 0.06);
+  }
+  .theme-dusk     { --bg: var(--midnight);   --accent: var(--mustard); }
+  .theme-ember    { --bg: var(--oxblood);    --accent: var(--mustard); --accent-soft: rgba(211,146,3,0.22); --rail: rgba(241,236,225,0.14); }
+  .theme-clay     { --bg: var(--terracotta); --accent: var(--cotton);  --accent-soft: rgba(241,236,225,0.18); }
+  .theme-espresso { --bg: var(--espresso);   --accent: var(--terracotta); --accent-soft: rgba(162,70,23,0.22); }
+  .theme-moss     { --bg: var(--sage);       --accent: var(--cotton);  --accent-soft: rgba(241,236,225,0.18); }
+  .theme-mustard  { --bg: var(--mustard);    --fg: var(--espresso); --fg-dim: rgba(36,25,22,0.65); --accent: var(--oxblood); --accent-soft: rgba(78,0,0,0.16); --rail: rgba(36,25,22,0.16); --bubble: rgba(36,25,22,0.07); }
+  .theme-linen    { --bg: var(--cotton);     --fg: var(--espresso); --fg-dim: rgba(36,25,22,0.7); --accent: var(--terracotta); --accent-soft: rgba(162,70,23,0.14); --rail: rgba(36,25,22,0.14); --bubble: rgba(36,25,22,0.05); }
+
+  .sidebar {
+    width: 340px;
+    height: 560px;
+    background: var(--bg);
+    color: var(--fg);
+    border-radius: 18px 0 0 18px;
+    box-shadow:
+      -8px 0 32px rgba(0,0,0,0.45),
+      inset 1px 0 0 rgba(241,236,225,0.05);
+    display: flex;
+    flex-direction: column;
+    font-family: "Mosvita", system-ui, sans-serif;
+    font-size: 13.5px;
+    overflow: hidden;
+    position: relative;
+  }
+  /* film grain on the sidebar itself, scoped */
+  .sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.10;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.0' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+  /* sun-arc subtle accent at the top */
+  .sidebar::after {
+    content: "";
+    position: absolute;
+    top: -120px;
+    left: -40px;
+    width: 420px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 60%);
+    pointer-events: none;
+    filter: blur(8px);
+  }
+
+  /* Sidebar — header */
+  .sb-head {
+    padding: 16px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--rail);
+    position: relative;
+    z-index: 1;
+  }
+  .sb-mark {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: grid; place-items: center;
+    color: var(--bg);
+    font-family: "New Astro", sans-serif;
+    font-size: 13px;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .sb-title {
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 15.5px;
+    letter-spacing: 0.01em;
+  }
+  .sb-spacer { flex: 1; }
+  .sb-iconbtn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--rail);
+    color: var(--fg-dim);
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+  .sb-iconbtn:hover, .sb-iconbtn.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--fg);
+  }
+  .sb-iconbtn svg { width: 14px; height: 14px; }
+
+  /* Sidebar — body */
+  .sb-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+  }
+  .sb-section {
+    padding: 12px 16px 6px;
+    border-bottom: 1px solid var(--rail);
+  }
+  .sb-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .sb-row:last-child { margin-bottom: 0; }
+  .sb-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--bubble);
+    border: 1px solid var(--rail);
+    color: var(--fg-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .sb-pill:hover { background: var(--accent-soft); color: var(--fg); }
+  .sb-pill.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: transparent;
+    font-weight: 500;
+  }
+
+  .sb-participants {
+    display: flex; gap: 6px;
+    padding: 4px 16px 12px;
+  }
+  .sb-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: "Mosvita", sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    border: 1.5px solid var(--bg);
+    margin-left: -6px;
+  }
+  .sb-avatar:first-child { margin-left: 0; }
+  .sb-avatar.a1 { background: var(--mustard); color: var(--espresso); }
+  .sb-avatar.a2 { background: var(--terracotta); color: var(--cotton); }
+  .sb-avatar.a3 { background: var(--sage); color: var(--cotton); }
+  .sb-avatar.a4 { background: var(--cotton); color: var(--espresso); }
+  .sb-host-tag {
+    align-self: center;
+    margin-left: 4px;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sb-chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg { display: flex; flex-direction: column; gap: 2px; }
+  .msg .who {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--fg-dim);
+  }
+  .msg .who b { color: var(--accent); font-weight: 700; }
+  .msg .text {
+    background: var(--bubble);
+    border-radius: 10px 14px 14px 4px;
+    padding: 7px 11px;
+    color: var(--fg);
+    max-width: 88%;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .msg.me .text {
+    background: var(--accent-soft);
+    border-radius: 14px 10px 4px 14px;
+    align-self: flex-end;
+  }
+  .msg.me .who { align-self: flex-end; }
+  .msg.sys .text {
+    background: transparent;
+    border: 1px dashed var(--rail);
+    color: var(--fg-dim);
+    font-size: 12px;
+    text-align: center;
+    align-self: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+
+  /* Composer */
+  .sb-composer {
+    border-top: 1px solid var(--rail);
+    padding: 10px 12px 12px;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg);
+    position: relative;
+    z-index: 1;
+  }
+  .sb-input {
+    flex: 1;
+    background: var(--bubble);
+    border: 1px solid var(--rail);
+    color: var(--fg);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .sb-input::placeholder { color: var(--fg-dim); }
+  .sb-send {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .sb-send svg { width: 14px; height: 14px; }
+
+  /* ================ Pull-out arrow — sun-arc capsule ================ */
+  .arrow-wrap {
+    position: relative;
+    height: 560px;
+    width: 64px;
+  }
+  .pull-arrow {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 80px;
+    background: var(--terracotta);
+    color: var(--cotton);
+    border-radius: 22px 0 0 22px;
+    box-shadow:
+      -6px 0 18px rgba(0,0,0,0.35),
+      inset 1px 0 0 rgba(241,236,225,0.12);
+    display: grid; place-items: center;
+    cursor: pointer;
+    border: 0;
+    font-family: "Mosvita", sans-serif;
+  }
+  .pull-arrow svg { width: 14px; height: 14px; }
+  .pull-arrow.pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 22px 0 0 22px;
+    box-shadow: 0 0 0 0 rgba(211, 146, 3, 0.55);
+    animation: pulse 1.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(211, 146, 3, 0.55); }
+    80%  { box-shadow: 0 0 0 14px rgba(211, 146, 3, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(211, 146, 3, 0); }
+  }
+  .pull-badge {
+    position: absolute;
+    right: -2px;
+    top: calc(50% - 56px);
+    background: var(--mustard);
+    color: var(--espresso);
+    border-radius: 999px;
+    font-family: "Mosvita", sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 2px 8px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ============== Settings drawer (inside sidebar) ============== */
+  .settings {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 88%, black) 100%);
+    z-index: 3;
+    display: flex; flex-direction: column;
+  }
+  .settings .set-head {
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--rail);
+  }
+  .settings .set-head h3 {
+    margin: 0;
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    color: var(--fg);
+    flex: 1;
+  }
+  .settings .set-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+  }
+  .set-group {
+    margin-bottom: 22px;
+  }
+  .set-group .set-label {
+    font-family: "Mosvita", sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    margin-bottom: 10px;
+  }
+  .set-item {
+    display: flex; align-items: center;
+    padding: 8px 0;
+    gap: 12px;
+  }
+  .set-item .si-label {
+    flex: 1;
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .set-item .si-sub {
+    display: block;
+    font-size: 11.5px;
+    color: var(--fg-dim);
+    margin-top: 2px;
+  }
+  /* toggle */
+  .toggle {
+    width: 36px; height: 20px;
+    border-radius: 999px;
+    background: var(--rail);
+    position: relative;
+    cursor: pointer;
+    transition: background 140ms ease;
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    background: var(--cotton);
+    border-radius: 50%;
+    transition: left 140ms ease;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { left: 18px; background: var(--bg); }
+  /* slider */
+  .slider {
+    appearance: none; -webkit-appearance: none;
+    width: 110px; height: 4px;
+    background: var(--rail);
+    border-radius: 999px;
+    outline: none;
+  }
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  /* segmented control */
+  .seg {
+    display: inline-flex;
+    background: var(--bubble);
+    border: 1px solid var(--rail);
+    border-radius: 999px;
+    padding: 2px;
+  }
+  .seg button {
+    background: transparent;
+    border: none;
+    color: var(--fg-dim);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: var(--bg); font-weight: 500; }
+  /* palette grid */
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+  .swatch {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    border: 2px solid transparent;
+    transition: transform 120ms ease, border-color 120ms ease;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.on { border-color: var(--cotton); }
+  .swatch.on::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border: 1px solid var(--accent);
+    border-radius: 16px;
+  }
+  .sw-dusk     { background: var(--midnight); }
+  .sw-ember    { background: var(--oxblood); }
+  .sw-clay     { background: var(--terracotta); }
+  .sw-espresso { background: var(--espresso); }
+  .sw-moss     { background: var(--sage); }
+  .sw-mustard  { background: var(--mustard); }
+  .sw-linen    { background: var(--cotton); }
+
+  /* ============== Emoji picker ============== */
+  .emoji-pop {
+    position: absolute;
+    bottom: 56px;
+    left: 12px; right: 12px;
+    background: color-mix(in srgb, var(--bg) 92%, black);
+    border: 1px solid var(--rail);
+    border-radius: 14px;
+    padding: 10px;
+    z-index: 4;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
+  }
+  .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 156px;
+    overflow-y: auto;
+  }
+  .emoji-grid button {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    padding: 4px 0;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .emoji-grid button:hover { background: var(--accent-soft); }
+  .emoji-cats {
+    display: flex; gap: 4px; margin-top: 6px;
+    border-top: 1px solid var(--rail);
+    padding-top: 6px;
+  }
+  .emoji-cats button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--fg-dim);
+    font-size: 14px;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .emoji-cats button.on { background: var(--accent-soft); color: var(--fg); }
+
+  /* ============== Follow-video toast ============== */
+  .toast {
+    margin: 0 16px 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px;
+    color: var(--fg);
+  }
+  .toast .toast-ico {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    display: grid; place-items: center; flex-shrink: 0;
+    font-size: 11px;
+  }
+  .toast .toast-text { flex: 1; line-height: 1.35; }
+  .toast .toast-text b { color: var(--accent); }
+  .toast .toast-go {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+
+  /* ============== Notification permission explainer ============== */
+  .perm-card {
+    margin: 0 16px 8px;
+    padding: 12px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg) 80%, black);
+    border: 1px solid var(--rail);
+  }
+  .perm-card h4 {
+    margin: 0 0 4px;
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 13.5px;
+    color: var(--fg);
+  }
+  .perm-card p {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    line-height: 1.45;
+  }
+  .perm-card .perm-actions { display: flex; gap: 8px; }
+  .perm-card .perm-actions button {
+    font-family: inherit;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--rail);
+    background: transparent;
+    color: var(--fg-dim);
+  }
+  .perm-card .perm-actions button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: transparent;
+    font-weight: 500;
+  }
+
+  /* ============== Toolbar popup ============== */
+  .popup-frame {
+    width: 320px;
+    background: var(--cotton);
+    color: var(--espresso);
+    border-radius: 14px;
+    overflow: hidden;
+    font-family: "Mosvita", sans-serif;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    position: relative;
+  }
+  .popup-frame::before {
+    content: "";
+    position: absolute;
+    top: -90px; right: -50px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(162,70,23,0.18), transparent 60%);
+    pointer-events: none;
+  }
+  .pop-head {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(36,25,22,0.08);
+    display: flex; align-items: center; gap: 10px;
+    position: relative;
+  }
+  .pop-mark {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    color: var(--cotton);
+    display: grid; place-items: center;
+    font-family: "New Astro", sans-serif;
+    font-size: 14px;
+  }
+  .pop-title {
+    font-family: "New Astro", sans-serif;
+    font-size: 16px;
+    line-height: 1.1;
+    flex: 1;
+  }
+  .pop-title .pt-sub {
+    display: block;
+    font-family: "Mosvita", sans-serif;
+    font-size: 11px;
+    color: rgba(36,25,22,0.55);
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+  .pop-body { padding: 14px 18px 8px; }
+  .pop-status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px;
+    color: rgba(36,25,22,0.7);
+    margin-bottom: 12px;
+  }
+  .pop-status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(36,25,22,0.3);
+  }
+  .pop-status.live .dot { background: var(--sage); box-shadow: 0 0 0 3px rgba(121,112,40,0.22); }
+  .pop-status.host .dot { background: var(--terracotta); box-shadow: 0 0 0 3px rgba(162,70,23,0.22); }
+
+  .pop-btn {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--terracotta);
+    color: var(--cotton);
+    border: none;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  .pop-btn .pb-arc {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--mustard);
+    color: var(--espresso);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+  .pop-btn.secondary {
+    background: transparent;
+    color: var(--espresso);
+    border: 1px solid rgba(36,25,22,0.18);
+  }
+  .pop-btn.secondary .pb-arc { background: var(--espresso); color: var(--cotton); }
+  .pop-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .pop-master {
+    margin-top: 6px;
+    padding: 12px 14px;
+    background: rgba(36,25,22,0.05);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pop-master .pm-label {
+    flex: 1;
+  }
+  .pop-master .pm-label b {
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 13.5px;
+    display: block;
+  }
+  .pop-master .pm-label span {
+    font-size: 11.5px;
+    color: rgba(36,25,22,0.6);
+  }
+  .pop-toggle {
+    width: 38px; height: 22px;
+    border-radius: 999px;
+    background: rgba(36,25,22,0.18);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .pop-toggle::after {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: var(--cotton);
+    border-radius: 50%;
+    transition: left 140ms ease;
+  }
+  .pop-toggle.on { background: var(--sage); }
+  .pop-toggle.on::after { left: 18px; }
+
+  .pop-foot {
+    padding: 10px 18px 14px;
+    border-top: 1px solid rgba(36,25,22,0.08);
+    font-size: 11.5px;
+    color: rgba(36,25,22,0.55);
+    display: flex; justify-content: space-between;
+  }
+  .pop-foot a { color: var(--terracotta); text-decoration: none; }
+
+  /* ============== Palette preset row ============== */
+  .preset-card {
+    background: #1a1714;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(241,236,225,0.06);
+    display: flex; flex-direction: column;
+  }
+  .preset-card .pc-bg {
+    height: 90px;
+    position: relative;
+  }
+  .preset-card .pc-bg .pc-mini-msg {
+    position: absolute;
+    bottom: 10px; left: 10px;
+    background: rgba(0,0,0,0.18);
+    color: var(--cotton);
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    backdrop-filter: blur(2px);
+  }
+  .preset-card.theme-mustard .pc-mini-msg,
+  .preset-card.theme-linen   .pc-mini-msg { background: rgba(36,25,22,0.12); color: var(--espresso); }
+  .preset-card .pc-foot {
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preset-card .pc-name {
+    font-family: "New Astro", sans-serif;
+    font-size: 13px;
+    color: var(--cotton);
+    flex: 1;
+  }
+  .preset-card .pc-hex {
+    font-size: 10px;
+    color: var(--ink-dim);
+    letter-spacing: 0.04em;
+  }
+
+  /* ============== Caption boxes under each demo ============== */
+  .caption {
+    margin-top: 14px;
+    color: var(--ink-dim);
+    font-size: 12.5px;
+    max-width: 600px;
+    line-height: 1.5;
+  }
+  .caption code {
+    background: rgba(241,236,225,0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--cotton);
+  }
+
+  /* ============== Stage variants ============== */
+  .stage-flex {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 620px;
+  }
+  .stage-flex .sidebar { z-index: 2; }
+  .legend-tag {
+    position: absolute;
+    top: 16px; left: 16px;
+    background: rgba(0,0,0,0.5);
+    color: var(--mustard);
+    font-family: "Mosvita", sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 999px;
+    z-index: 5;
+  }
+
+  /* ============== TOC ============== */
+  .toc {
+    background: rgba(241,236,225,0.04);
+    border: 1px solid rgba(241,236,225,0.08);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 56px;
+  }
+  .toc h3 {
+    font-family: "New Astro", sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mustard);
+    margin: 0 0 10px;
+  }
+  .toc ol {
+    margin: 0; padding: 0;
+    list-style: none;
+    columns: 2;
+    column-gap: 28px;
+  }
+  .toc ol li {
+    padding: 3px 0;
+    font-size: 13px;
+    break-inside: avoid;
+  }
+  .toc a { color: var(--cotton); text-decoration: none; opacity: 0.85; }
+  .toc a:hover { color: var(--mustard); opacity: 1; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <p class="kicker">Watch-Party · mockups · phase A</p>
+    <h1>Chat polish + extension controls</h1>
+    <p>Static preview for sign-off. AVIOUS brand voice: deep autumn palette, mid-century structure, sun-arc capsule shapes, lived-in grain. New Astro for accents, Mosvita Sans for UI. Bundled inside the extension; no CDN. Nothing here is wired — every interaction shown is a state.</p>
+  </header>
+
+  <nav class="toc">
+    <h3>States in this preview</h3>
+    <ol>
+      <li><a href="#s1">1. Pull-out arrow — collapsed + pulse</a></li>
+      <li><a href="#s2">2. Sidebar — expanded (default Dusk)</a></li>
+      <li><a href="#s3">3. Palette presets (7 curated)</a></li>
+      <li><a href="#s4">4. Sidebar — settings cog open</a></li>
+      <li><a href="#s5">5. Composer — emoji picker open</a></li>
+      <li><a href="#s6">6. Follow-video toast</a></li>
+      <li><a href="#s7">7. Notification permission card</a></li>
+      <li><a href="#s8">8. Toolbar popup — three states</a></li>
+    </ol>
+  </nav>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s1">
+    <div class="row-head">
+      <h2>1 · Pull-out arrow — collapsed</h2>
+      <span class="note">Sun-arc capsule, terracotta on host page. ~44px hit area. Pulses once on first show, then never again (<code>arrow_pulse_seen</code>).</span>
+    </div>
+    <div class="grid-2">
+      <div class="stage host-frame" style="display:flex; align-items:center; justify-content:flex-end; padding-right: 0;">
+        <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=…</span>
+        <span class="legend-tag">first show — pulse</span>
+        <div class="arrow-wrap">
+          <span class="pull-badge">3</span>
+          <button class="pull-arrow pulse" aria-label="Open Watch-Party sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="stage host-frame" style="display:flex; align-items:center; justify-content:flex-end; padding-right: 0;">
+        <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=…</span>
+        <span class="legend-tag">resting state</span>
+        <div class="arrow-wrap">
+          <button class="pull-arrow" aria-label="Open Watch-Party sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Capsule sits flush against the right edge of the viewport on host pages. Terracotta against dark hosts (YouTube/Netflix); mustard ring on first show. Badge shows unread chat count. Click anywhere on the capsule opens the sidebar.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s2">
+    <div class="row-head">
+      <h2>2 · Sidebar — expanded (default Dusk theme)</h2>
+      <span class="note">Midnight ground, mustard accents. Default for new installs.</span>
+    </div>
+    <div class="stage host-frame stage-flex">
+      <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=h3kF…</span>
+      <div class="theme theme-dusk">
+        <div class="sidebar">
+          <div class="sb-head">
+            <span class="sb-mark">W</span>
+            <span class="sb-title">Watch-Party</span>
+            <span class="sb-spacer"></span>
+            <button class="sb-iconbtn" title="Copy invite link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+            <button class="sb-iconbtn" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.21 16.7l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1A1.65 1.65 0 0 0 4.27 7l-.06-.06A2 2 0 1 1 7 4.21l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+
+          <div class="sb-section">
+            <div class="sb-row">
+              <button class="sb-pill primary">🔓 Free-for-all</button>
+              <button class="sb-pill">Host only</button>
+              <span class="sb-spacer" style="flex:1"></span>
+              <span class="sb-host-tag">HOST</span>
+            </div>
+          </div>
+
+          <div class="sb-participants">
+            <div class="sb-avatar a1">A</div>
+            <div class="sb-avatar a2">M</div>
+            <div class="sb-avatar a3">J</div>
+            <div class="sb-avatar a4">K</div>
+          </div>
+
+          <div class="sb-body">
+            <div class="sb-chat">
+              <div class="msg sys"><div class="text">🎬 Avi started the party</div></div>
+              <div class="msg">
+                <div class="who"><b>maya</b> · 8:41 pm</div>
+                <div class="text">ok i'm in — picture quality looks great</div>
+              </div>
+              <div class="msg me">
+                <div class="who"><b>you</b> · 8:42 pm</div>
+                <div class="text">queueing the next one after this</div>
+              </div>
+              <div class="msg">
+                <div class="who"><b>jules</b> · 8:43 pm</div>
+                <div class="text">that drop at 1:24 😭🔥</div>
+              </div>
+              <div class="msg sys"><div class="text">⏸ paused at 1:48</div></div>
+              <div class="msg">
+                <div class="who"><b>kai</b> · 8:44 pm</div>
+                <div class="text">brb 30 sec, kettle's screaming</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-composer">
+            <button class="sb-iconbtn" title="Emoji">😊</button>
+            <input class="sb-input" placeholder="message…" />
+            <button class="sb-send" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Sidebar mounts to the right edge, 340px wide, full-height. Sun-arc accent glow at the top echoes the brand sun motif without shouting. Asymmetric bubble corners (4px on the speaker side) give a quiet conversational rhythm.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s3">
+    <div class="row-head">
+      <h2>3 · Palette presets</h2>
+      <span class="note">7 curated options drawn straight from the AVIOUS palette. No free color wheel.</span>
+    </div>
+    <div class="grid-4">
+      <div class="preset-card theme theme-dusk">
+        <div class="pc-bg" style="background: var(--bg); position: relative;">
+          <div class="pc-mini-msg">jules: that drop 🔥</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Dusk</span><span class="pc-hex">#1A243D</span></div>
+      </div>
+      <div class="preset-card theme theme-ember">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">maya: i'm in</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Ember</span><span class="pc-hex">#4E0000</span></div>
+      </div>
+      <div class="preset-card theme theme-clay">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">kai: brb 30s</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Clay</span><span class="pc-hex">#A24617</span></div>
+      </div>
+      <div class="preset-card theme theme-espresso">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">avi: queueing next</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Espresso</span><span class="pc-hex">#241916</span></div>
+      </div>
+      <div class="preset-card theme theme-moss">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">jules: 😭🔥</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Moss</span><span class="pc-hex">#797028</span></div>
+      </div>
+      <div class="preset-card theme theme-mustard">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">maya: warm warm warm</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Mustard</span><span class="pc-hex">#D39203</span></div>
+      </div>
+      <div class="preset-card theme theme-linen">
+        <div class="pc-bg" style="background: var(--bg);">
+          <div class="pc-mini-msg">kai: daylight mode 🌤</div>
+        </div>
+        <div class="pc-foot"><span class="pc-name">Linen</span><span class="pc-hex">#F1ECE1</span></div>
+      </div>
+    </div>
+    <p class="caption">Each preset re-skins the sidebar via CSS custom properties — <code>--bg</code>, <code>--fg</code>, <code>--accent</code>, <code>--rail</code>, <code>--bubble</code>. Linen is the lone light theme. Mustard sits in the middle: warm but legible because text flips to Espresso.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s4">
+    <div class="row-head">
+      <h2>4 · Settings cog open</h2>
+      <span class="note">Drawer overlays the chat. Persists via <code>chrome.storage.sync</code>.</span>
+    </div>
+    <div class="stage host-frame stage-flex">
+      <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=h3kF…</span>
+      <div class="theme theme-dusk">
+        <div class="sidebar">
+          <div class="sb-head">
+            <span class="sb-mark">W</span>
+            <span class="sb-title">Watch-Party</span>
+            <span class="sb-spacer"></span>
+            <button class="sb-iconbtn" title="Copy invite link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+            <button class="sb-iconbtn active" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.21 16.7l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1A1.65 1.65 0 0 0 4.27 7l-.06-.06A2 2 0 1 1 7 4.21l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+
+          <!-- settings drawer -->
+          <div class="settings">
+            <div class="set-head">
+              <h3>Settings</h3>
+              <button class="sb-iconbtn" title="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="set-body">
+
+              <div class="set-group">
+                <div class="set-label">Chat</div>
+                <div class="set-item">
+                  <div class="si-label">Emoji picker
+                    <span class="si-sub">Show 😊 in the composer</span>
+                  </div>
+                  <div class="toggle on"></div>
+                </div>
+                <div class="set-item">
+                  <div class="si-label">Sound on new message
+                    <span class="si-sub">Quiet chime, mutable</span>
+                  </div>
+                  <div class="toggle on"></div>
+                </div>
+                <div class="set-item">
+                  <div class="si-label">Volume</div>
+                  <input type="range" min="0" max="100" value="60" class="slider" />
+                </div>
+                <div class="set-item">
+                  <div class="si-label">Browser notifications
+                    <span class="si-sub">Always fire, even when this tab is focused</span>
+                  </div>
+                  <div class="toggle"></div>
+                </div>
+              </div>
+
+              <div class="set-group">
+                <div class="set-label">Appearance</div>
+                <div class="set-item">
+                  <div class="si-label">Font</div>
+                  <div class="seg">
+                    <button class="on">Mosvita</button>
+                    <button>New Astro</button>
+                    <button>System</button>
+                  </div>
+                </div>
+                <div class="set-item">
+                  <div class="si-label">Text size</div>
+                  <div class="seg">
+                    <button>S</button>
+                    <button class="on">M</button>
+                    <button>L</button>
+                  </div>
+                </div>
+                <div class="set-item" style="display:block;">
+                  <div class="si-label" style="margin-bottom:10px;">Palette</div>
+                  <div class="palette-grid">
+                    <div class="swatch sw-dusk on" title="Dusk"></div>
+                    <div class="swatch sw-ember" title="Ember"></div>
+                    <div class="swatch sw-clay" title="Clay"></div>
+                    <div class="swatch sw-espresso" title="Espresso"></div>
+                    <div class="swatch sw-moss" title="Moss"></div>
+                    <div class="swatch sw-mustard" title="Mustard"></div>
+                    <div class="swatch sw-linen" title="Linen"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="set-group">
+                <div class="set-label">Sync</div>
+                <div class="set-item">
+                  <div class="si-label">Auto-follow host video changes
+                    <span class="si-sub">Same-domain only (YouTube → next video, etc.)</span>
+                  </div>
+                  <div class="toggle on"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Settings drawer slides over the chat in-place — no separate options page, no extra Chrome surface to maintain. Each toggle writes to <code>watchparty_settings_v1</code> on <code>chrome.storage.sync</code>; live-applied via <code>onChanged</code>.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s5">
+    <div class="row-head">
+      <h2>5 · Emoji picker open</h2>
+      <span class="note">~80 hand-curated emoji, 4 categories. No full-Unicode dump.</span>
+    </div>
+    <div class="stage host-frame stage-flex">
+      <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=h3kF…</span>
+      <div class="theme theme-ember">
+        <div class="sidebar">
+          <div class="sb-head">
+            <span class="sb-mark">W</span>
+            <span class="sb-title">Watch-Party</span>
+            <span class="sb-spacer"></span>
+            <button class="sb-iconbtn" title="Copy invite link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+            <button class="sb-iconbtn" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82 2 2 0 1 1-2.83 2.83 1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51 2 2 0 0 1-4 0 1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33 2 2 0 1 1-2.83-2.83 1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1 2 2 0 0 1 0-4 1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82 2 2 0 1 1 2.83-2.83 1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51 2 2 0 0 1 4 0 1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33 2 2 0 1 1 2.83 2.83 1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1 2 2 0 0 1 0 4 1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+
+          <div class="sb-participants">
+            <div class="sb-avatar a1">A</div>
+            <div class="sb-avatar a2">M</div>
+            <div class="sb-avatar a3">J</div>
+          </div>
+
+          <div class="sb-body">
+            <div class="sb-chat">
+              <div class="msg">
+                <div class="who"><b>maya</b></div>
+                <div class="text">that drop 🔥</div>
+              </div>
+              <div class="msg me">
+                <div class="who"><b>you</b></div>
+                <div class="text">😭😭😭</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="emoji-pop">
+            <div class="emoji-grid">
+              <button>😀</button><button>😅</button><button>😂</button><button>🤣</button>
+              <button>😊</button><button>😍</button><button>😘</button><button>🥹</button>
+              <button>😎</button><button>🤩</button><button>😭</button><button>😱</button>
+              <button>🤯</button><button>😤</button><button>🥰</button><button>🥲</button>
+              <button>🔥</button><button>💯</button><button>✨</button><button>⭐</button>
+              <button>🎬</button><button>🍿</button><button>🎶</button><button>💃</button>
+              <button>👀</button><button>👏</button><button>🙌</button><button>🙏</button>
+              <button>👍</button><button>❤️</button><button>💔</button><button>🥂</button>
+            </div>
+            <div class="emoji-cats">
+              <button class="on">😀</button>
+              <button>🔥</button>
+              <button>🎬</button>
+              <button>❤️</button>
+            </div>
+          </div>
+
+          <div class="sb-composer">
+            <button class="sb-iconbtn active" title="Emoji">😊</button>
+            <input class="sb-input" value="😭😭" />
+            <button class="sb-send" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Popover lifts over the composer, 8 cols × ~10 rows, 4 quick category tabs. Sized so the curated set never needs paging more than once. Shown here on the Ember preset (oxblood) to show contrast holds.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s6">
+    <div class="row-head">
+      <h2>6 · Follow-video toast</h2>
+      <span class="note">Shown when <code>auto_follow_video</code> is OFF and host switches to a new same-domain video. With it ON, the tab navigates silently.</span>
+    </div>
+    <div class="stage host-frame stage-flex">
+      <span class="stage-label">youtube.com/watch?v=NEW_ID &nbsp;·&nbsp; #party=h3kF…</span>
+      <div class="theme theme-espresso">
+        <div class="sidebar">
+          <div class="sb-head">
+            <span class="sb-mark">W</span>
+            <span class="sb-title">Watch-Party</span>
+            <span class="sb-spacer"></span>
+            <button class="sb-iconbtn" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+
+          <div class="sb-participants">
+            <div class="sb-avatar a1">A</div>
+            <div class="sb-avatar a2">M</div>
+            <div class="sb-avatar a3">J</div>
+          </div>
+
+          <div class="sb-body">
+            <div class="sb-chat">
+              <div class="msg">
+                <div class="who"><b>maya</b></div>
+                <div class="text">that one's done — pulling up the next</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="toast">
+            <div class="toast-ico">▶</div>
+            <div class="toast-text"><b>Avi</b> switched to a new YouTube video.<br><span style="color: var(--fg-dim); font-size: 11.5px;">Same domain — safe to follow.</span></div>
+            <button class="toast-go">Go</button>
+          </div>
+
+          <div class="sb-composer">
+            <button class="sb-iconbtn" title="Emoji">😊</button>
+            <input class="sb-input" placeholder="message…" />
+            <button class="sb-send" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Toast sits just above the composer so it never pushes chat history out of view. Cross-domain switches are dropped silently (one system message in chat instead of a navigation). Detection logic per site: YouTube hooks <code>yt-navigate-finish</code>; Vimeo/generic watch <code>&lt;video src&gt;</code>; Netflix polls <code>location.pathname</code>.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s7">
+    <div class="row-head">
+      <h2>7 · Notification permission card</h2>
+      <span class="note">Shown when user flips Notifications ON before granting browser permission.</span>
+    </div>
+    <div class="stage host-frame stage-flex">
+      <span class="stage-label">youtube.com/watch?v=… &nbsp;·&nbsp; #party=h3kF…</span>
+      <div class="theme theme-clay">
+        <div class="sidebar">
+          <div class="sb-head">
+            <span class="sb-mark">W</span>
+            <span class="sb-title">Watch-Party</span>
+            <span class="sb-spacer"></span>
+            <button class="sb-iconbtn active" title="Settings">⚙</button>
+          </div>
+
+          <div class="sb-participants">
+            <div class="sb-avatar a1">A</div>
+            <div class="sb-avatar a2">M</div>
+          </div>
+
+          <div class="sb-body">
+            <div class="sb-chat">
+              <div class="msg sys"><div class="text">🎬 party started</div></div>
+            </div>
+          </div>
+
+          <div class="perm-card">
+            <h4>Let your browser ping you?</h4>
+            <p>Push notifications fire for every new chat message, even when this tab is focused. We only ask once — you can flip it back off anytime.</p>
+            <div class="perm-actions">
+              <button class="primary">Allow notifications</button>
+              <button>Not now</button>
+            </div>
+          </div>
+
+          <div class="sb-composer">
+            <button class="sb-iconbtn" title="Emoji">😊</button>
+            <input class="sb-input" placeholder="message…" />
+            <button class="sb-send" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Lazy prompt: we don't ask for permission on page load. The user flips the toggle, we explain why and call <code>Notification.requestPermission()</code> only when they click Allow. If they decline, the toggle flips back off and stays off until they re-enable.</p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section class="row" id="s8">
+    <div class="row-head">
+      <h2>8 · Toolbar popup — three states</h2>
+      <span class="note">Click the extension icon. Three rooms, three actions, master kill at the bottom.</span>
+    </div>
+    <div class="stage" style="display: flex; gap: 28px; justify-content: center; padding: 48px 28px;">
+      <!-- dormant -->
+      <div class="popup-frame">
+        <div class="pop-head">
+          <span class="pop-mark">W</span>
+          <div class="pop-title">Watch-Party
+            <span class="pt-sub">no room on this tab</span>
+          </div>
+        </div>
+        <div class="pop-body">
+          <div class="pop-status"><span class="dot"></span>Dormant — no room signature on this URL</div>
+          <button class="pop-btn">
+            <span class="pb-arc">+</span>
+            Start watch party on this page
+          </button>
+          <button class="pop-btn secondary" disabled>
+            <span class="pb-arc">↗</span>
+            Copy invite link
+          </button>
+          <div class="pop-master">
+            <div class="pm-label"><b>Extension</b><span>Master on/off across all tabs</span></div>
+            <div class="pop-toggle on"></div>
+          </div>
+        </div>
+        <div class="pop-foot">
+          <span>v0.4.0</span>
+          <a href="#">avious-party.dev</a>
+        </div>
+      </div>
+      <!-- host -->
+      <div class="popup-frame">
+        <div class="pop-head">
+          <span class="pop-mark">W</span>
+          <div class="pop-title">Watch-Party
+            <span class="pt-sub">you're hosting · 4 people</span>
+          </div>
+        </div>
+        <div class="pop-body">
+          <div class="pop-status host"><span class="dot"></span>Hosting · room <span style="font-family:ui-monospace,monospace;color:var(--terracotta);">h3kF…</span></div>
+          <button class="pop-btn" disabled style="opacity:0.45;">
+            <span class="pb-arc">+</span>
+            Start watch party on this page
+          </button>
+          <button class="pop-btn secondary">
+            <span class="pb-arc">↗</span>
+            Copy invite link
+          </button>
+          <div class="pop-master">
+            <div class="pm-label"><b>Extension</b><span>Master on/off across all tabs</span></div>
+            <div class="pop-toggle on"></div>
+          </div>
+        </div>
+        <div class="pop-foot">
+          <span>v0.4.0</span>
+          <a href="#">avious-party.dev</a>
+        </div>
+      </div>
+      <!-- participant -->
+      <div class="popup-frame">
+        <div class="pop-head">
+          <span class="pop-mark">W</span>
+          <div class="pop-title">Watch-Party
+            <span class="pt-sub">joined · maya is host</span>
+          </div>
+        </div>
+        <div class="pop-body">
+          <div class="pop-status live"><span class="dot"></span>Connected · 4 people</div>
+          <button class="pop-btn" disabled style="opacity:0.45;">
+            <span class="pb-arc">+</span>
+            Start watch party on this page
+          </button>
+          <button class="pop-btn secondary">
+            <span class="pb-arc">↗</span>
+            Copy invite link
+          </button>
+          <div class="pop-master">
+            <div class="pm-label"><b>Extension</b><span>Master on/off across all tabs</span></div>
+            <div class="pop-toggle on"></div>
+          </div>
+        </div>
+        <div class="pop-foot">
+          <span>v0.4.0</span>
+          <a href="#">avious-party.dev</a>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Popup is light-theme by default (Cotton ground, Terracotta primary) because Chrome's toolbar surface reads as a daytime context — keeping it light against the darker sidebar makes the two surfaces feel distinct. "Start watch party" disables when a room is already active. Master kill is a green Sage toggle at the bottom: it's the only switch the popup is allowed to flip globally.</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -93,6 +93,12 @@ export class Room {
           this.broadcast({ ...msg, from: conn.id, name: conn.name }, null);
           return;
         }
+        case "videoChange": {
+          // Admin only — non-admin "I switched videos" would just steer the party.
+          if (conn.id !== this.adminId) return;
+          this.broadcast(msg, conn.id);
+          return;
+        }
         case "ffa": {
           if (conn.id !== this.adminId) return;
           this.freeForAll = msg.freeForAll;

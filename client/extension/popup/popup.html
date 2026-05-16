@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Watch-Party</title>
+<link rel="stylesheet" href="../styles/popup.css" />
+</head>
+<body>
+  <div class="pop-head">
+    <span class="pop-mark">W</span>
+    <div class="pop-title">Watch-Party
+      <span class="pt-sub" id="pop-sub">checking this tab…</span>
+    </div>
+  </div>
+  <div class="pop-body">
+    <div class="pop-status" id="pop-status"><span class="dot"></span><span id="pop-status-text">…</span></div>
+    <button class="pop-btn" id="pop-start">
+      <span class="pb-arc">+</span>
+      Start watch party on this page
+    </button>
+    <button class="pop-btn secondary" id="pop-copy" disabled>
+      <span class="pb-arc">↗</span>
+      Copy invite link
+    </button>
+    <div class="pop-master">
+      <div class="pm-label"><b>Extension</b><span>Master on/off across all tabs</span></div>
+      <button class="pop-toggle on" id="pop-master" aria-label="Toggle master enabled"></button>
+    </div>
+  </div>
+  <div class="pop-foot">
+    <span id="pop-version">v0.0.0</span>
+    <a id="pop-landing" href="#" target="_blank" rel="noopener">avious-party.dev</a>
+  </div>
+  <div class="pop-toast" id="pop-toast"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
