@@ -1,56 +1,66 @@
 # Handoff — GitHub Actions CI/CD setup
 
 Last updated: 2026-05-16
-Topic: **Wire `.github/workflows/deploy.yml` to auto-deploy relay, landing, and extension releases on push to main.**
+Status: **SHIPPED** — workflows written, committed pending (see "Immediate next step" below).
+Topic: Auto-deploy relay, landing, and extension releases on push to main via GitHub Actions.
 
-## Where we left off
+## What shipped
 
-Watch-Party is **fully live and shipping v0.2.0**. All three deploys are manual right now:
+Two workflow files now exist in `.github/workflows/`:
 
-- Relay: `wss://avious-party-relay.avibenabram.workers.dev` (Cloudflare Workers, free tier, SQLite-DO).
-- Landing: `https://watch-party.pages.dev/` (Cloudflare Pages, project name `watch-party`).
-- Extension: GitHub Releases — latest `v0.2.0` with the in-extension update banner wired and verified by build (banner fetches `/releases/latest`, shows when tag != baked `VERSION`).
+- **`typecheck.yml`** — runs `npm run typecheck` on every PR to `main`.
+- **`deploy.yml`** — on push to `main`, uses `dorny/paths-filter@v3` to detect changes and conditionally:
+  - `landing/**` changed → `wrangler pages deploy landing --project-name watch-party --branch main`
+  - `relay/**` or `shared/**` changed → `wrangler deploy --config relay/wrangler.toml`
+  - `client/extension/manifest.json` changed → version-gated release flow: reads version, skips if `v$VERSION` tag exists, else builds with prod `WS_URL`, syncs `extension-build/`, auto-commits with `[skip ci]`, zips, `gh release create` with `--generate-notes`.
 
-Avi chose **Option C** (GitHub Actions running wrangler) over Option B (Cloudflare dashboard Git integration), because the repo already has 3 deploy targets and the project culture is "config-in-repo" (CLAUDE.md / CONTEXT.md / HANDOFF pattern).
+Pins: `wrangler@3.114.17`, Node 20, all actions pinned by major.
 
-## Exact next step
+## Secrets in place
 
-Build a single `.github/workflows/deploy.yml` that on push to `main`:
+GitHub repo secrets at https://github.com/AviouslyAvi/Watch-Party/settings/secrets/actions:
+- `CLOUDFLARE_API_TOKEN` (rotated 2026-05-16 after accidental paste in chat — old token dead)
+- `CLOUDFLARE_ACCOUNT_ID` = `15e39723199f14fa3cb56cf4e20e84cc`
 
-1. Detects changed paths via `dorny/paths-filter` or `git diff`.
-2. If `landing/**` changed → `wrangler pages deploy landing --project-name watch-party`.
-3. If `relay/**` changed → `wrangler deploy --config relay/wrangler.toml`.
-4. If `client/extension/manifest.json` version bumped → rebuild extension with prod `WS_URL`, sync `extension-build/`, commit back, zip, `gh release create v$VERSION ...`. (The auto-commit-back step needs `permissions: contents: write` and uses `GITHUB_TOKEN`.)
+Token scope: Workers Scripts:Edit + Cloudflare Pages:Edit, scoped to Avibenabram@gmail.com's Account.
 
-## Blocker — needs Avi
+## Decisions locked
 
-**Cloudflare API token must be created by Avi** (can't be done from CLI without an existing token). Steps:
+- **extension-build/** auto-commit-back from CI (`[skip ci]` to prevent loops).
+- **Typecheck on PRs**: yes.
+- **Relay deploy**: auto on push (no manual gate). Revisit if usage opens up beyond friend-group.
 
-1. Dashboard → My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template.
-2. Scope the token to account `15e39723199f14fa3cb56cf4e20e84cc` (Avibenabram@gmail.com's Account).
-3. Add Pages permission too: under Account permissions add **Cloudflare Pages:Edit**.
-4. Copy the token, add it to GitHub: repo Settings → Secrets and variables → Actions → New repository secret → name `CLOUDFLARE_API_TOKEN`.
-5. Also add `CLOUDFLARE_ACCOUNT_ID` = `15e39723199f14fa3cb56cf4e20e84cc` as a secret (wrangler reads it).
+## Immediate next step
 
-Once those two secrets exist, the workflow can be written and pushed.
+Commit + push the workflows from the worktree at `/Users/aviouslyavi/Claude/Watch-Party/objective-dhawan-aa1cf5`:
 
-## Context the next chat needs
+```bash
+git add .github/workflows/
+git commit -m "ci: add deploy + typecheck workflows"
+git push
+```
 
-- Bake-time constants in `build.mjs`: `WS_URL`, `VERSION`, `RELEASES_API`, `RELEASES_URL`. CI must pass `WS_URL=wss://avious-party-relay.avibenabram.workers.dev` for any extension build.
-- Auto-release-on-version-bump means: workflow reads `client/extension/manifest.json` version, checks `gh release view v$VERSION` to see if that tag already exists, and only ships if it doesn't. Prevents accidental duplicate releases on every push.
-- `extension-build/` is committed prebuilt. If the workflow rebuilds it, it must commit-back (with `[skip ci]` in the message to avoid loops).
-- `wrangler` version: project uses `^3.90.0` (currently 3.114.17 installed). CI should pin to a specific version, not `latest`, to avoid silent breakage.
+First run on main should fire `changes` only and skip all three deploy jobs (no surface changed). That's the smoke test.
 
-## Open decisions for Avi
+## Verification plan (after push)
 
-- **Auto-commit-back vs require manual `extension-build/` sync.** Auto is convenient but adds a bot commit on every release. Manual keeps history clean but means devs must remember to rebuild before pushing a version bump.
-- **Whether to add typecheck-on-PR step now** (cheap, recommended) or defer.
-- **Whether to deploy the relay on every `relay/**` change automatically**, or gate behind a manual approval. For 5 friends, auto is fine; if it ever opens up, gate it.
+1. **typecheck**: open a throwaway PR with a whitespace change in README, confirm green check.
+2. **landing**: no-op edit `landing/index.html`, push to main, watch `landing` job, curl `https://watch-party.pages.dev/`.
+3. **relay**: no-op comment in `relay/worker.ts`, push, watch `relay` job, hit the Worker health endpoint.
+4. **extension release**: bump `client/extension/manifest.json` version to `0.2.1`, push. Expect: `extension-release` job runs → auto-commits `extension-build/` → `v0.2.1` release with zip appears at releases page → installed extension's update banner picks up the new tag.
+5. **Idempotency**: re-run the same workflow run from the Actions UI; the release job should hit the "already exists" gate and skip cleanly.
 
-## Anchor files (read these first in the new chat)
+## Anchor files
 
-- `package.json` (deploy scripts, wrangler version pin)
-- `build.mjs` (constants the CI must inject)
-- `relay/wrangler.toml` (`new_sqlite_classes` migration — already shipped)
-- `client/extension/manifest.json` (version source of truth)
-- This file.
+- `.github/workflows/deploy.yml` (new)
+- `.github/workflows/typecheck.yml` (new)
+- `package.json` — `build:ext`, `typecheck`, `deploy:relay`, `deploy:landing` scripts (already wired).
+- `build.mjs` — reads `WS_URL` from env.
+- `client/extension/manifest.json` — version source of truth.
+- `relay/wrangler.toml` — wrangler picks up via `--config`.
+
+## Open follow-ups (not blocking)
+
+- Cache `node_modules` only if CI minutes start to bite. Build is sub-30s today.
+- Slack/Discord deploy notification webhook — nice-to-have.
+- Chrome Web Store auto-publish path — explicitly deferred; v0.2.0 ships via GitHub Releases.
