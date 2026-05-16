@@ -1,47 +1,57 @@
-# avious-party — Handoff
+# Watch-Party — Handoff
 
-Last updated: 2026-05-11
-Milestone: **Barebones-1**
+Last updated: 2026-05-16
+Milestone: **v0.3.0 — Room hardening shipped**
 
 ## Status
 
-Chrome MV3 extension shipping and verified working between two browser profiles on the same machine against Cineby. Userscript path still works in parallel. Three v1 bugs fixed in commit `ae9bd35` (now on `origin/main`):
+v0.3.0 is live. Relay redeployed; extension released as a GitHub Releases zip. Friends on v0.2.0 will see the update banner next time they load a page.
 
-1. Room link captured at boot instead of click time → shared link dropped the SPA path on sites like Cineby.
-2. Spacebar (and other player shortcuts) in the chat input leaked through to the page's video.
-3. Receiver showed a buffering spinner on every remote play/pause because the engine seeked unconditionally before pausing.
+### Production endpoints
 
-The relay is **only running locally** (`ws://localhost:8787`). Friend-to-friend testing fails because their machine has nothing on that port. Wrangler is not logged in yet.
+| Service | URL |
+|---|---|
+| Relay (Worker + Durable Object) | `wss://avious-party-relay.avibenabram.workers.dev` |
+| Landing page (Cloudflare Pages) | `https://watch-party.pages.dev/` |
+| Latest release (zip) | `https://github.com/AviouslyAvi/Watch-Party/releases/latest` |
+| Source repo | `https://github.com/AviouslyAvi/Watch-Party` |
 
-## What's done since the last handoff
+## What shipped this session
 
-- `client/extension/manifest.json` + `content.ts` — MV3 wrapper with `all_frames: true` + `match_about_blank: true` so the content script reaches Cineby's cross-origin player iframe without depending on Tampermonkey's per-user iframe-injection setting.
-- `build.mjs` + `package.json` — `TARGET=user|ext|all` (`npm run build:user|build:ext|build`). Outputs `dist/extension/` ready for "Load unpacked".
-- Three fixes listed in Status above. Drift-check before seek now applies to play and pause; seek still applies unconditionally to remote `seek` messages.
+- **128-bit room IDs.** `ensureRoom()` in [client/userscript/main.ts](../client/userscript/main.ts) now generates 22-char base64url tokens via `randomToken(16)`. Old 8-hex-char rooms (32 bits) were scannable in principle; new rooms are not.
+- **Optional passphrase gate.** `Hello` carries an optional `passphrase` field (in [shared/protocol.ts](../shared/protocol.ts)). The relay pins the passphrase on first connection ([relay/room.ts](../relay/room.ts)); mismatched joiners get a `{type: "rejected", reason: "passphrase"}` and a 4001 close. Empty rooms reset the pin so admins can change/clear the key.
+- **Admin-only panel UI.** "🔒 Add room key" toggle under "Copy room link" in [client/userscript/ui/panel.ts](../client/userscript/ui/panel.ts). Submitting rewrites the URL fragment with `&key=` and force-closes the WS to re-pin on the relay.
+- **Docs updated.** [relay/CLAUDE.md](../relay/CLAUDE.md) supersedes the old "Don't add auth" rule.
+
+Commits on `main`:
+- `58ba6b2` — Harden rooms: 128-bit IDs + optional passphrase gate.
+- `cbe2e27` — v0.3.0: rebuild extension with room hardening.
+
+Release: [v0.3.0 — Room hardening](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.0).
+
+## Threat model in plain terms
+
+- **Random scanner hitting your relay URL** with a guessed room: blocked by entropy. 128-bit search space.
+- **Friend forwards your full URL to someone you didn't intend:** still in. Same as before. Use a passphrase if this matters.
+- **You want OOB protection:** click "🔒 Add room key" in the panel as admin, set a value, copy the new link. Tell friends the key separately (voice/text). URL alone is no longer enough.
 
 ## Exact next step
 
-1. **Avi: log into Cloudflare** so the relay can be deployed:
-   ```
-   ./node_modules/.bin/wrangler login
-   ```
-2. Next chat: `npm run deploy:relay` to produce the `wss://avious-party-relay.<account>.workers.dev` URL.
-3. Rebuild the extension pointed at it:
-   ```
-   WS_URL=wss://avious-party-relay.<account>.workers.dev npm run build:ext
-   ```
-4. Zip `dist/extension/` and send to the friend; both sides reload the unpacked extension.
-5. Optional: `npm run deploy:landing` once the relay URL is committed somewhere referenceable.
+No blocker; pick one when next session opens:
 
-## Open decisions for Avi
+1. **Manual smoke test on prod.** Load v0.3.0 in two browser profiles, verify: (a) URL has 22-char `party=`, (b) clicking "Add room key" reconnects with `&key=`, (c) second profile without `&key=` is rejected with the "Wrong room key" banner.
+2. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
+3. **Landing page deep-link helper.** When a friend opens a `#party=...` link without the extension installed, the landing page should detect the fragment and surface install instructions first.
+4. **Wrangler upgrade.** Currently 3.114.17 against `^3.90.0`; v4 is out and the CLI warns on every deploy.
 
-- Whether to ship icons before the first share (Chrome will use a generic puzzle-piece icon otherwise — fine but unbranded).
-- Whether to keep the userscript target alive after the extension is the primary path, or drop it.
-- v2 service-worker WS migration so SPA navigation between episodes doesn't drop the connection. Defer until friends actually complain.
+## Open decisions
+
+- Whether to surface the passphrase UI to non-admins as a read-only "🔒 This room is keyed" indicator, or keep it admin-only and invisible to others (current).
+- Whether the next feature direction is presence richness (typing indicators, reactions) or reliability (service-worker WS migration for SPA episode navigation).
 
 ## Known unknowns / risks
 
-- Autoplay policy may block programmatic `.play()` on the receiver if they haven't clicked the page. Mitigation idea: mute-first-then-unmute on receiver's initial sync, since muted video bypasses autoplay block. Not implemented.
-- CSP-locked stream providers on Cineby still won't accept the content script; user works around it by switching source in the player.
+- Autoplay policy may block programmatic `.play()` on the receiver if they haven't clicked the page. Mitigation idea: mute-first-then-unmute on receiver's initial sync (unimplemented).
+- CSP-locked stream providers on Cineby still won't accept the content script; user works around it by switching source.
 - WS reconnect on close is naive (fixed 2s). Fine for v1.
-- `dist/` is gitignored; built artifact lives only on the build machine. Friend-distribution today is a zipped folder, not a release pipeline.
+- CI workflows (`e56ef06`, `bcaafc2`) exist now — deploy ran automatically on this push. Verify the auto-deploy didn't republish a stale relay (it shouldn't — the workflow builds from main).
