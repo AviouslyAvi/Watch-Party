@@ -161,6 +161,17 @@
       <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
         <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
       </div>
+      <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
+        <button id="cp-key-toggle" type="button" style="background:none;border:none;color:#bbb;cursor:pointer;padding:0;font:inherit;text-decoration:underline;">\u{1F512} Add room key</button>
+        <form id="cp-key-form" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
+          <input id="cp-key-input" maxlength="64" placeholder="Out-of-band secret" autocomplete="off" style="padding:6px;background:#111;border:1px solid #333;border-radius:4px;color:#eee;outline:none;font:inherit;"/>
+          <div style="display:flex;gap:6px;">
+            <button id="cp-key-save" type="submit" style="flex:1;padding:5px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
+            <button id="cp-key-clear" type="button" style="padding:5px 10px;background:#333;color:#eee;border:none;border-radius:4px;cursor:pointer;font:inherit;">Clear</button>
+          </div>
+          <div style="color:#888;font-size:11px;line-height:1.3;">Friends need the new link to reconnect. Share the key separately for real protection.</div>
+        </form>
+      </div>
       <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;">
         <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
           <input type="checkbox" id="cp-ffa"/> Free-for-all controls
@@ -224,9 +235,34 @@
       revealChat();
     });
     if (!initialUsername) showGate();
+    const keyWrap = $("#cp-key-wrap");
+    const keyToggle = $("#cp-key-toggle");
+    const keyForm = $("#cp-key-form");
+    const keyInput = $("#cp-key-input");
+    const keyClear = $("#cp-key-clear");
+    for (const ev of ["keydown", "keyup", "keypress"]) keyInput.addEventListener(ev, stop);
+    keyToggle.addEventListener("click", () => {
+      const open = keyForm.style.display !== "none";
+      keyForm.style.display = open ? "none" : "flex";
+      if (!open) setTimeout(() => keyInput.focus(), 0);
+    });
+    keyForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = keyInput.value.trim().slice(0, 64);
+      hooks.onSetKey(v.length ? v : null);
+      keyForm.style.display = "none";
+    });
+    keyClear.addEventListener("click", () => {
+      keyInput.value = "";
+      hooks.onSetKey(null);
+      keyForm.style.display = "none";
+    });
     function setState(s) {
       const isAdmin = s.you === s.adminId;
       $("#cp-ffa-wrap").style.display = isAdmin ? "block" : "none";
+      keyWrap.style.display = isAdmin ? "block" : "none";
+      keyToggle.textContent = s.passphrase ? "\u{1F513} Key set \u2014 change or clear" : "\u{1F512} Add room key";
+      keyInput.value = s.passphrase ?? "";
       ffa.checked = s.freeForAll;
       $("#cp-people").innerHTML = s.participants.map((p) => `<div>${p.isAdmin ? "\u{1F451} " : ""}${escapeHtml(p.name)}${p.id === s.you ? " (you)" : ""}</div>`).join("");
     }
@@ -268,12 +304,15 @@
   }
   function bootTopFrame() {
     let me = loadStoredName() ?? "";
-    const roomId = ensureRoom();
-    const currentRoomUrl = () => roomLinkForCurrent(roomId);
+    const initial = ensureRoom();
+    const roomId = initial.roomId;
+    let passphrase = initial.passphrase;
+    const currentRoomUrl = () => roomLinkForCurrent(roomId, passphrase);
     let you = "";
     let adminId = "";
     let freeForAll = false;
     let ws = null;
+    let rejected = false;
     const panel = mountPanel({
       onCopyLink: () => {
         const url = currentRoomUrl();
@@ -294,6 +333,17 @@
         me = name;
         localStorage.setItem("cp-name", name);
         connect();
+      },
+      onSetKey: (key) => {
+        passphrase = key;
+        writeRoomFragment(roomId, passphrase);
+        panel.appendSystem(
+          key ? "\u{1F512} Room key set. Share the new link \u2014 friends will need to reconnect with it." : "\u{1F513} Room key cleared."
+        );
+        if (ws) try {
+          ws.close();
+        } catch {
+        }
       }
     }, me || void 0);
     const video = makeTopFrameAdapter();
@@ -309,7 +359,9 @@
     function connect() {
       ws = new WebSocket(`${"wss://avious-party-relay.avibenabram.workers.dev"}/ws?room=${encodeURIComponent(roomId)}`);
       ws.addEventListener("open", () => {
-        send({ type: "hello", name: me, pathname: location.pathname, v: 1 });
+        const hello = { type: "hello", name: me, pathname: location.pathname, v: 1 };
+        if (passphrase) hello.passphrase = passphrase;
+        send(hello);
       });
       ws.addEventListener("message", (e) => {
         let msg;
@@ -321,13 +373,14 @@
         handle(msg);
       });
       ws.addEventListener("close", () => {
+        if (rejected) return;
         panel.appendSystem("Disconnected. Reconnecting in 2s\u2026");
         setTimeout(connect, 2e3);
       });
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && latest !== `v${"0.2.0"}` && latest !== "0.2.0") {
+      if (latest && latest !== `v${"0.3.0"}` && latest !== "0.3.0") {
         panel.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
     });
@@ -337,7 +390,7 @@
           you = msg.you;
           adminId = msg.adminId;
           freeForAll = msg.freeForAll;
-          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
+          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
           if (you === adminId) {
             sync.startHeartbeat();
             panel.appendSystem("You are the admin.");
@@ -346,7 +399,7 @@
           return;
         case "participants":
           adminId = msg.adminId;
-          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
+          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
           if (you === adminId) sync.startHeartbeat();
           return;
         case "ffa":
@@ -355,6 +408,16 @@
           return;
         case "pathDiff":
           panel.appendSystem(`\u26A0\uFE0F Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
+          return;
+        case "rejected":
+          rejected = true;
+          if (ws) try {
+            ws.close();
+          } catch {
+          }
+          panel.appendSystem(
+            msg.reason === "passphrase" ? "\u274C Wrong room key. Get the full share link from whoever set up the room." : "\u274C Connection rejected."
+          );
           return;
         case "revert":
           sync.revert(msg.at, msg.paused);
@@ -439,16 +502,34 @@
     return n && n.trim() ? n.slice(0, 32) : null;
   }
   function ensureRoom() {
-    const m = location.hash.match(/party=([\w-]+)/);
-    if (m && m[1]) return m[1];
-    const id = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
     const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const existing = h.get("party");
+    const key = h.get("key");
+    if (existing) {
+      return { roomId: existing, passphrase: key && key.length ? key : null };
+    }
+    const id = randomToken(16);
     h.set("party", id);
     history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
-    return id;
+    return { roomId: id, passphrase: null };
   }
-  function roomLinkForCurrent(id) {
-    return `${location.origin}${location.pathname}${location.search}#party=${id}`;
+  function roomLinkForCurrent(id, passphrase) {
+    const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
+    return `${location.origin}${location.pathname}${location.search}#${frag}`;
+  }
+  function writeRoomFragment(id, passphrase) {
+    const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+    h.set("party", id);
+    if (passphrase) h.set("key", passphrase);
+    else h.delete("key");
+    history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
+  }
+  function randomToken(byteLen) {
+    const buf = new Uint8Array(byteLen);
+    crypto.getRandomValues ? crypto.getRandomValues(buf) : buf.forEach((_, i) => buf[i] = Math.floor(Math.random() * 256));
+    let s = "";
+    for (const b of buf) s += String.fromCharCode(b);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
   async function checkForUpdate() {
     try {
