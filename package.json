@@ -11,7 +11,7 @@
     "build:ext": "TARGET=ext node build.mjs",
     "dev:relay": "wrangler dev --config relay/wrangler.toml",
     "deploy:relay": "wrangler deploy --config relay/wrangler.toml",
-    "deploy:landing": "cp dist/avious-party.user.js landing/avious-party.user.js && wrangler pages deploy landing --project-name avious-party",
+    "deploy:landing": "wrangler pages deploy landing --project-name watch-party",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
