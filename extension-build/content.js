@@ -149,6 +149,9 @@
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-weight:600;color:#f97316;">\u{1F3AC} Watch-Party</span>
     </div>
+    <a id="cp-update-banner" href="#" target="_blank" rel="noopener" style="display:none;padding:8px 12px;background:#1e3a8a;color:#dbeafe;font-size:12px;text-decoration:none;border-bottom:1px solid #1d4ed8;">
+      <span id="cp-update-text"></span>
+    </a>
     <form id="cp-name-form" style="padding:12px;display:none;flex-direction:column;gap:8px;">
       <label style="font-size:12px;color:#bbb;">Pick a display name to join chat</label>
       <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:#eee;outline:none;font:inherit;"/>
@@ -243,7 +246,14 @@
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
-    return { setState, appendChat, appendSystem, revealChat };
+    function showUpdateBanner(latestTag, href) {
+      const banner = $("#cp-update-banner");
+      const text = $("#cp-update-text");
+      text.textContent = `Update available: ${latestTag} \u2014 click to download`;
+      banner.href = href;
+      banner.style.display = "block";
+    }
+    return { setState, appendChat, appendSystem, revealChat, showUpdateBanner };
   }
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -316,6 +326,11 @@
       });
     }
     if (me) connect();
+    checkForUpdate().then((latest) => {
+      if (latest && latest !== `v${"0.2.0"}` && latest !== "0.2.0") {
+        panel.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
+      }
+    });
     function handle(msg) {
       switch (msg.type) {
         case "welcome":
@@ -434,5 +449,22 @@
   }
   function roomLinkForCurrent(id) {
     return `${location.origin}${location.pathname}${location.search}#party=${id}`;
+  }
+  async function checkForUpdate() {
+    try {
+      const cached = localStorage.getItem("cp-update-check");
+      if (cached) {
+        const { tag: tag2, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 6 * 60 * 60 * 1e3) return tag2;
+      }
+      const res = await fetch("https://api.github.com/repos/AviouslyAvi/Watch-Party/releases/latest", { headers: { Accept: "application/vnd.github+json" } });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const tag = json.tag_name ?? null;
+      if (tag) localStorage.setItem("cp-update-check", JSON.stringify({ tag, ts: Date.now() }));
+      return tag;
+    } catch {
+      return null;
+    }
   }
 })();

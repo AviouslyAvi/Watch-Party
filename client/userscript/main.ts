@@ -4,6 +4,9 @@ import { runIframeBridge, IFRAME_TAG } from "./iframe-bridge";
 import { mountPanel } from "./ui/panel";
 
 declare const WS_URL: string;
+declare const VERSION: string;
+declare const RELEASES_API: string;
+declare const RELEASES_URL: string;
 
 const isTopFrame = window === window.top;
 
@@ -78,6 +81,12 @@ function bootTopFrame() {
     });
   }
   if (me) connect();
+
+  checkForUpdate().then((latest) => {
+    if (latest && latest !== `v${VERSION}` && latest !== VERSION) {
+      panel.showUpdateBanner(latest, RELEASES_URL);
+    }
+  });
 
   function handle(msg: WireMsg) {
     switch (msg.type) {
@@ -206,4 +215,22 @@ function ensureRoom(): string {
 
 function roomLinkForCurrent(id: string): string {
   return `${location.origin}${location.pathname}${location.search}#party=${id}`;
+}
+
+async function checkForUpdate(): Promise<string | null> {
+  try {
+    const cached = localStorage.getItem("cp-update-check");
+    if (cached) {
+      const { tag, ts } = JSON.parse(cached) as { tag: string; ts: number };
+      if (Date.now() - ts < 6 * 60 * 60 * 1000) return tag;
+    }
+    const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { tag_name?: string };
+    const tag = json.tag_name ?? null;
+    if (tag) localStorage.setItem("cp-update-check", JSON.stringify({ tag, ts: Date.now() }));
+    return tag;
+  } catch {
+    return null;
+  }
 }

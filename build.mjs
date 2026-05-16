@@ -3,6 +3,10 @@ import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
 
 const WS_URL = process.env.WS_URL || "ws://localhost:8787";
 const target = process.env.TARGET || "all"; // "user" | "ext" | "all"
+const manifest = JSON.parse(readFileSync("client/extension/manifest.json", "utf8"));
+const VERSION = manifest.version;
+const RELEASES_API = process.env.RELEASES_API || "https://api.github.com/repos/AviouslyAvi/Watch-Party/releases/latest";
+const RELEASES_URL = process.env.RELEASES_URL || "https://github.com/AviouslyAvi/Watch-Party/releases/latest";
 
 mkdirSync("dist", { recursive: true });
 
@@ -12,7 +16,12 @@ async function bundle() {
     bundle: true,
     format: "iife",
     target: "es2020",
-    define: { WS_URL: JSON.stringify(WS_URL) },
+    define: {
+      WS_URL: JSON.stringify(WS_URL),
+      VERSION: JSON.stringify(VERSION),
+      RELEASES_API: JSON.stringify(RELEASES_API),
+      RELEASES_URL: JSON.stringify(RELEASES_URL),
+    },
     write: false,
     legalComments: "none",
   });
