@@ -12,6 +12,7 @@ export class Room {
   private adminId: ClientId | null = null;
   private freeForAll = false;
   private lastState: SyncMsg | null = null;
+  private passphrase: string | null = null;
 
   async fetch(req: Request): Promise<Response> {
     const pair = new WebSocketPair();
@@ -32,6 +33,18 @@ export class Room {
 
       if (!registered) {
         if (msg.type !== "hello") return;
+
+        // Passphrase gate: first connection pins the room's passphrase (or null
+        // if the first joiner didn't supply one). Later joiners must match.
+        const supplied = msg.passphrase ?? null;
+        if (this.conns.size === 0) {
+          this.passphrase = supplied;
+        } else if ((this.passphrase ?? null) !== supplied) {
+          try { server.send(JSON.stringify({ type: "rejected", reason: "passphrase" })); } catch {}
+          try { server.close(4001, "passphrase"); } catch {}
+          return;
+        }
+
         conn = { id, name: msg.name, pathname: msg.pathname, ws: server };
         this.conns.set(id, conn);
         if (!this.adminId) this.adminId = id;
@@ -95,6 +108,10 @@ export class Room {
         if (this.adminId === conn.id) {
           const next = this.conns.keys().next();
           this.adminId = next.done ? null : next.value;
+        }
+        if (this.conns.size === 0) {
+          // Empty room → reset pinned passphrase so the next first-joiner can re-pin.
+          this.passphrase = null;
         }
         this.broadcastParticipants();
       }

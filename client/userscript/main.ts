@@ -18,13 +18,16 @@ if (!isTopFrame) {
 
 function bootTopFrame() {
   let me = loadStoredName() ?? "";
-  const roomId = ensureRoom();
-  const currentRoomUrl = () => roomLinkForCurrent(roomId);
+  const initial = ensureRoom();
+  const roomId = initial.roomId;
+  let passphrase: string | null = initial.passphrase;
+  const currentRoomUrl = () => roomLinkForCurrent(roomId, passphrase);
 
   let you = "";
   let adminId = "";
   let freeForAll = false;
   let ws: WebSocket | null = null;
+  let rejected = false;
 
   const panel = mountPanel({
     onCopyLink: () => {
@@ -47,6 +50,18 @@ function bootTopFrame() {
       localStorage.setItem("cp-name", name);
       connect();
     },
+    onSetKey: (key) => {
+      passphrase = key;
+      writeRoomFragment(roomId, passphrase);
+      panel.appendSystem(
+        key
+          ? "🔒 Room key set. Share the new link — friends will need to reconnect with it."
+          : "🔓 Room key cleared.",
+      );
+      // Force a reconnect so the relay re-pins the new passphrase.
+      // Empty rooms reset their pin, so close + reconnect gives us a clean state if we were alone.
+      if (ws) try { ws.close(); } catch {}
+    },
   }, me || undefined);
 
   const video = makeTopFrameAdapter();
@@ -64,7 +79,9 @@ function bootTopFrame() {
   function connect() {
     ws = new WebSocket(`${WS_URL}/ws?room=${encodeURIComponent(roomId)}`);
     ws.addEventListener("open", () => {
-      send({ type: "hello", name: me, pathname: location.pathname, v: 1 });
+      const hello: WireMsg = { type: "hello", name: me, pathname: location.pathname, v: 1 };
+      if (passphrase) (hello as { passphrase?: string }).passphrase = passphrase;
+      send(hello);
     });
     ws.addEventListener("message", (e) => {
       let msg: WireMsg;
@@ -76,6 +93,7 @@ function bootTopFrame() {
       handle(msg);
     });
     ws.addEventListener("close", () => {
+      if (rejected) return;
       panel.appendSystem("Disconnected. Reconnecting in 2s…");
       setTimeout(connect, 2000);
     });
@@ -94,7 +112,7 @@ function bootTopFrame() {
         you = msg.you;
         adminId = msg.adminId;
         freeForAll = msg.freeForAll;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
+        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) {
           sync.startHeartbeat();
           panel.appendSystem("You are the admin.");
@@ -103,7 +121,7 @@ function bootTopFrame() {
         return;
       case "participants":
         adminId = msg.adminId;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl() });
+        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) sync.startHeartbeat();
         return;
       case "ffa":
@@ -112,6 +130,15 @@ function bootTopFrame() {
         return;
       case "pathDiff":
         panel.appendSystem(`⚠️ Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
+        return;
+      case "rejected":
+        rejected = true;
+        if (ws) try { ws.close(); } catch {}
+        panel.appendSystem(
+          msg.reason === "passphrase"
+            ? "❌ Wrong room key. Get the full share link from whoever set up the room."
+            : "❌ Connection rejected.",
+        );
         return;
       case "revert":
         sync.revert(msg.at, msg.paused);
@@ -203,18 +230,39 @@ function loadStoredName(): string | null {
   return n && n.trim() ? n.slice(0, 32) : null;
 }
 
-function ensureRoom(): string {
-  const m = location.hash.match(/party=([\w-]+)/);
-  if (m && m[1]) return m[1];
-  const id = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8);
+function ensureRoom(): { roomId: string; passphrase: string | null } {
   const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const existing = h.get("party");
+  const key = h.get("key");
+  if (existing) {
+    return { roomId: existing, passphrase: key && key.length ? key : null };
+  }
+  // New room: ~128 bits of entropy, base64url, no padding.
+  const id = randomToken(16);
   h.set("party", id);
   history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
-  return id;
+  return { roomId: id, passphrase: null };
 }
 
-function roomLinkForCurrent(id: string): string {
-  return `${location.origin}${location.pathname}${location.search}#party=${id}`;
+function roomLinkForCurrent(id: string, passphrase: string | null): string {
+  const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
+  return `${location.origin}${location.pathname}${location.search}#${frag}`;
+}
+
+function writeRoomFragment(id: string, passphrase: string | null) {
+  const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  h.set("party", id);
+  if (passphrase) h.set("key", passphrase);
+  else h.delete("key");
+  history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
+}
+
+function randomToken(byteLen: number): string {
+  const buf = new Uint8Array(byteLen);
+  (crypto.getRandomValues ? crypto.getRandomValues(buf) : buf.forEach((_, i) => (buf[i] = Math.floor(Math.random() * 256))));
+  let s = "";
+  for (const b of buf) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 async function checkForUpdate(): Promise<string | null> {

@@ -6,6 +6,7 @@ export interface PanelState {
   freeForAll: boolean;
   participants: Participant[];
   roomUrl: string;
+  passphrase?: string | null;
 }
 
 export interface PanelHooks {
@@ -13,6 +14,7 @@ export interface PanelHooks {
   onSendChat: (text: string) => void;
   onCopyLink: () => void;
   onSubmitUsername: (name: string) => void;
+  onSetKey: (key: string | null) => void;
 }
 
 const SIDEBAR_WIDTH = 320;
@@ -48,6 +50,17 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
       <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;">
         <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
+      </div>
+      <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
+        <button id="cp-key-toggle" type="button" style="background:none;border:none;color:#bbb;cursor:pointer;padding:0;font:inherit;text-decoration:underline;">🔒 Add room key</button>
+        <form id="cp-key-form" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
+          <input id="cp-key-input" maxlength="64" placeholder="Out-of-band secret" autocomplete="off" style="padding:6px;background:#111;border:1px solid #333;border-radius:4px;color:#eee;outline:none;font:inherit;"/>
+          <div style="display:flex;gap:6px;">
+            <button id="cp-key-save" type="submit" style="flex:1;padding:5px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
+            <button id="cp-key-clear" type="button" style="padding:5px 10px;background:#333;color:#eee;border:none;border-radius:4px;cursor:pointer;font:inherit;">Clear</button>
+          </div>
+          <div style="color:#888;font-size:11px;line-height:1.3;">Friends need the new link to reconnect. Share the key separately for real protection.</div>
+        </form>
       </div>
       <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;">
         <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
@@ -117,9 +130,35 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
   if (!initialUsername) showGate();
 
+  const keyWrap = $("#cp-key-wrap") as HTMLDivElement;
+  const keyToggle = $("#cp-key-toggle") as HTMLButtonElement;
+  const keyForm = $("#cp-key-form") as HTMLFormElement;
+  const keyInput = $("#cp-key-input") as HTMLInputElement;
+  const keyClear = $("#cp-key-clear") as HTMLButtonElement;
+  for (const ev of ["keydown", "keyup", "keypress"]) keyInput.addEventListener(ev, stop);
+  keyToggle.addEventListener("click", () => {
+    const open = keyForm.style.display !== "none";
+    keyForm.style.display = open ? "none" : "flex";
+    if (!open) setTimeout(() => keyInput.focus(), 0);
+  });
+  keyForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = keyInput.value.trim().slice(0, 64);
+    hooks.onSetKey(v.length ? v : null);
+    keyForm.style.display = "none";
+  });
+  keyClear.addEventListener("click", () => {
+    keyInput.value = "";
+    hooks.onSetKey(null);
+    keyForm.style.display = "none";
+  });
+
   function setState(s: PanelState) {
     const isAdmin = s.you === s.adminId;
     ($("#cp-ffa-wrap") as HTMLDivElement).style.display = isAdmin ? "block" : "none";
+    keyWrap.style.display = isAdmin ? "block" : "none";
+    keyToggle.textContent = s.passphrase ? "🔓 Key set — change or clear" : "🔒 Add room key";
+    keyInput.value = s.passphrase ?? "";
     ffa.checked = s.freeForAll;
     ($("#cp-people") as HTMLDivElement).innerHTML = s.participants
       .map((p) => `<div>${p.isAdmin ? "👑 " : ""}${escapeHtml(p.name)}${p.id === s.you ? " (you)" : ""}</div>`)

@@ -17,12 +17,13 @@ export type ChatMsg = {
 };
 
 export type PresenceMsg =
-  | { type: "hello"; name: string; pathname: string; v: number }
+  | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
   | { type: "welcome"; you: ClientId; adminId: ClientId; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
   | { type: "participants"; participants: Participant[]; adminId: ClientId }
   | { type: "ffa"; freeForAll: boolean }
   | { type: "revert"; at: number; paused: boolean }
-  | { type: "pathDiff"; theirPath: string; yourPath: string };
+  | { type: "pathDiff"; theirPath: string; yourPath: string }
+  | { type: "rejected"; reason: "passphrase" };
 
 export type Participant = { id: ClientId; name: string; isAdmin: boolean };
 

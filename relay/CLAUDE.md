@@ -5,7 +5,7 @@ One Worker, one Durable Object class (`Room`). Free tier. No persistent storage 
 ## Files
 
 - `worker.ts` — fetch handler. Upgrades `/ws?room=<id>` to a WebSocket and forwards to the matching `Room` DO.
-- `room.ts` — the `Room` Durable Object. Holds: `Set<Connection>`, `adminId`, `freeForAll: bool`, `lastState` (for late joiners).
+- `room.ts` — the `Room` Durable Object. Holds: `Set<Connection>`, `adminId`, `freeForAll: bool`, `lastState` (for late joiners), `passphrase` (optional OOB secret, pinned by the first joiner).
 - `wrangler.toml` — Worker + DO binding config.
 
 ## Protocol enforcement
@@ -17,6 +17,7 @@ The relay is the source of truth for **permissions only**. The sync engine in `s
 3. Forward viewer messages **only if** `freeForAll == true`. Otherwise drop and send the viewer a `{type: "revert", at, paused}` so they snap their video back.
 4. Forward chat regardless of permissions.
 5. Heartbeat the `lastState` to new joiners on connect.
+6. **Passphrase gate.** If a joiner's `hello.passphrase` doesn't match the room's pinned passphrase, send `{type: "rejected", reason: "passphrase"}` and close. The first joiner to a fresh room sets the passphrase (null if they didn't send one). Passphrase is pinned in DO memory only — when the room empties and the DO is evicted, the next first-joiner re-pins.
 
 ## Local dev
 
@@ -36,5 +37,6 @@ The userscript reads its WS URL from a build-time env var (`WS_URL`), so deployi
 ## Rules
 
 - Never log message contents (chat is private). Log only connection events and counts.
-- Don't add auth. Room ID + URL fragment is the only secret. If two strangers guess the same UUID, they share a room — that's fine for v1.
+- The room ID is ~128 bits of entropy (base64url, generated client-side in `ensureRoom()`). Scanning is infeasible. An optional out-of-band passphrase can be added by including `&key=<value>` in the share URL — defends against the URL leaking into a group chat where someone unwanted lurks.
+- Don't add real auth (accounts, tokens). Room ID + optional passphrase are the only secrets, both carried in the URL fragment so nothing identifying ever hits the server.
 - Don't add persistence. The moment we add KV or D1, costs and complexity go up.
