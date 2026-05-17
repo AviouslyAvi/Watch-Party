@@ -1,4 +1,5 @@
-import type { Participant } from "../../../shared/protocol";
+import type { Participant, ReactionEmoji } from "../../../shared/protocol";
+import { REACTION_EMOJIS } from "../../../shared/protocol";
 
 export interface PanelState {
   you: string;
@@ -16,7 +17,11 @@ export interface PanelHooks {
   onShareForNonInstallers: () => void;
   onSubmitUsername: (name: string) => void;
   onSetKey: (key: string | null) => void;
+  onReact: (emoji: ReactionEmoji) => void;
 }
+
+const REACTION_FLOAT_MAX = 5;
+const REACTION_FLOAT_MS = 2000;
 
 const SIDEBAR_WIDTH = 320;
 
@@ -70,7 +75,15 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
         </label>
       </div>
       <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;font-size:12px;color:#bbb;max-height:120px;overflow-y:auto;"></div>
-      <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:13px;min-height:0;"></div>
+      <div id="cp-chat-wrap" style="flex:1;position:relative;display:flex;flex-direction:column;min-height:0;">
+        <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:13px;min-height:0;"></div>
+        <div id="cp-reactions-float" style="position:absolute;left:0;right:0;bottom:0;height:0;pointer-events:none;overflow:visible;"></div>
+      </div>
+      <div id="cp-reactions" style="display:flex;gap:4px;padding:6px 12px;border-top:1px solid #2a2a2a;background:#161618;">
+        ${REACTION_EMOJIS.map(
+          (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid #2a2a2a;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`,
+        ).join("")}
+      </div>
       <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
         <input id="cp-input" placeholder="Type a message…" style="flex:1;padding:10px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
         <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
@@ -78,6 +91,22 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     </div>
   `;
   document.body.appendChild(host);
+
+  if (!document.getElementById("cp-keyframes")) {
+    const styleEl = document.createElement("style");
+    styleEl.id = "cp-keyframes";
+    styleEl.textContent = `
+      @keyframes cp-float-up {
+        0% { transform: translate(-50%, 0); opacity: 0; }
+        15% { opacity: 1; }
+        85% { opacity: 1; }
+        100% { transform: translate(-50%, -120px); opacity: 0; }
+      }
+      .cp-react-btn:hover { background:#222 !important; border-color:#444 !important; }
+      .cp-react-btn:active { transform: scale(0.92); }
+    `;
+    document.head.appendChild(styleEl);
+  }
 
   const $ = <T extends HTMLElement>(id: string) => host.querySelector(id) as T;
 
@@ -104,6 +133,34 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
   const stop = (e: Event) => e.stopPropagation();
   for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+
+  const reactionsBar = $("#cp-reactions") as HTMLDivElement;
+  reactionsBar.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement;
+    const btn = t.closest(".cp-react-btn") as HTMLElement | null;
+    if (!btn) return;
+    const emoji = btn.dataset.emoji as ReactionEmoji | undefined;
+    if (!emoji) return;
+    hooks.onReact(emoji);
+  });
+
+  const floatLayer = $("#cp-reactions-float") as HTMLDivElement;
+  function showReaction(name: string, emoji: string) {
+    while (floatLayer.children.length >= REACTION_FLOAT_MAX) {
+      floatLayer.firstChild?.remove();
+    }
+    const el = document.createElement("div");
+    const offset = Math.floor(Math.random() * 120) - 60;
+    el.style.cssText = `
+      position:absolute; left:calc(50% + ${offset}px); bottom:4px;
+      transform:translate(-50%,0); font-size:22px; line-height:1;
+      animation: cp-float-up ${REACTION_FLOAT_MS}ms ease-out forwards;
+      white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.7);
+    `;
+    el.innerHTML = `<span>${emoji}</span> <span style="font-size:11px;color:#ddd;">${escapeHtml(name)}</span>`;
+    floatLayer.appendChild(el);
+    setTimeout(() => el.remove(), REACTION_FLOAT_MS + 50);
+  }
 
   const nameForm = $("#cp-name-form") as HTMLFormElement;
   const nameInput = $("#cp-name-input") as HTMLInputElement;
@@ -194,7 +251,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     banner.style.display = "block";
   }
 
-  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner };
+  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction };
 }
 
 function escapeHtml(s: string) {

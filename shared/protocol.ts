@@ -16,6 +16,21 @@ export type ChatMsg = {
   ts: number;
 };
 
+export const REACTION_EMOJIS = ["❤️", "😂", "🔥", "👏", "😮", "👀"] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+
+export type ReactionMsg = {
+  type: "reaction";
+  from: ClientId;
+  name: string;
+  emoji: ReactionEmoji;
+  ts: number;
+};
+
+export function isReactionEmoji(s: unknown): s is ReactionEmoji {
+  return typeof s === "string" && (REACTION_EMOJIS as readonly string[]).includes(s);
+}
+
 export type PresenceMsg =
   | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
   | { type: "welcome"; you: ClientId; adminId: ClientId; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
@@ -27,7 +42,7 @@ export type PresenceMsg =
 
 export type Participant = { id: ClientId; name: string; isAdmin: boolean };
 
-export type WireMsg = SyncMsg | ChatMsg | PresenceMsg;
+export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | PresenceMsg;
 
 export function isSyncMsg(m: WireMsg): m is SyncMsg {
   return m.type === "play" || m.type === "pause" || m.type === "seek" || m.type === "state";

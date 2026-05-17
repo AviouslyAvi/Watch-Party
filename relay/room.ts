@@ -1,11 +1,16 @@
 import type { WireMsg, SyncMsg, Participant, ClientId } from "../shared/protocol";
+import { isReactionEmoji } from "../shared/protocol";
 
 type Conn = {
   id: ClientId;
   name: string;
   pathname: string;
   ws: WebSocket;
+  reactionStamps: number[];
 };
+
+const REACTION_WINDOW_MS = 10_000;
+const REACTION_LIMIT = 5;
 
 export class Room {
   private conns = new Map<ClientId, Conn>();
@@ -45,7 +50,7 @@ export class Room {
           return;
         }
 
-        conn = { id, name: msg.name, pathname: msg.pathname, ws: server };
+        conn = { id, name: msg.name, pathname: msg.pathname, ws: server, reactionStamps: [] };
         this.conns.set(id, conn);
         if (!this.adminId) this.adminId = id;
         registered = true;
@@ -91,6 +96,18 @@ export class Room {
         }
         case "chat": {
           this.broadcast({ ...msg, from: conn.id, name: conn.name }, null);
+          return;
+        }
+        case "reaction": {
+          if (!isReactionEmoji(msg.emoji)) return;
+          const now = Date.now();
+          conn.reactionStamps = conn.reactionStamps.filter((t) => now - t < REACTION_WINDOW_MS);
+          if (conn.reactionStamps.length >= REACTION_LIMIT) return;
+          conn.reactionStamps.push(now);
+          this.broadcast(
+            { type: "reaction", from: conn.id, name: conn.name, emoji: msg.emoji, ts: now },
+            null,
+          );
           return;
         }
         case "ffa": {

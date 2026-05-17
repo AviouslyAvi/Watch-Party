@@ -61,6 +61,9 @@ function bootTopFrame() {
       localStorage.setItem("cp-name", name);
       connect();
     },
+    onReact: (emoji) => {
+      send({ type: "reaction", from: you, name: me, emoji, ts: Date.now() });
+    },
     onSetKey: (key) => {
       passphrase = key;
       writeRoomFragment(roomId, passphrase);
@@ -157,6 +160,9 @@ function bootTopFrame() {
         return;
       case "chat":
         if (msg.from !== you) panel.appendChat(msg.name, msg.text);
+        return;
+      case "reaction":
+        panel.showReaction(msg.from === you ? "you" : msg.name, msg.emoji);
         return;
       case "play":
       case "pause":
