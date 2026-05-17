@@ -1,11 +1,19 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-05-17
+<<<<<<< Updated upstream
 Milestone: **v0.4.1 shipped — typing indicator live in prod**
 
 ## Status
 
 v0.4.1 is live. Typing indicator merged via [PR #3](https://github.com/AviouslyAvi/Watch-Party/pull/3) (squash `48108f8`). CI's `extension-release` job auto-cut the GitHub release on manifest version change. Existing Tampermonkey users see the auto-update banner on next page reload; extension users need to reload-from-unpacked or refresh from the new zip.
+=======
+Milestone: **v0.4.1 shipped — typing indicator live in prod (client + relay)**
+
+## Status
+
+v0.4.1 (typing indicator) is live: [PR #3](https://github.com/AviouslyAvi/Watch-Party/pull/3) squash-merged as `48108f8`, [v0.4.1 release](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.1) auto-cut by CI, **relay redeployed with the `case "typing"` broadcast handler.** Receiver-side decay model (1.5s send throttle, 3s per-sender decay). Three-profile Playwright smoke was 7/7 green pre-merge.
+>>>>>>> Stashed changes
 
 v0.4.0 emoji reactions remain live on top of v0.4.1.
 
@@ -20,8 +28,13 @@ v0.4.0 emoji reactions remain live on top of v0.4.1.
 
 ## What this session shipped
 
+<<<<<<< Updated upstream
 - **v0.4.1 cut.** Typing indicator merged via [PR #3](https://github.com/AviouslyAvi/Watch-Party/pull/3) (squash `48108f8`). Protocol addition `TypingMsg` (no `until` field — receiver-side decay); relay broadcasts unrated (no limit, no allowlist — server rewrites `from`/`name` from trusted `conn`). Panel renders `#cp-typing` above `#cp-form`: client-side 1.5s send throttle on `input` events, receiver maintains `Map<ClientId, {name, timeoutId}>` with 3s decay per sender. Render rules: 0→hidden, 1→"X is typing…", 2→"X and Y are typing…", 3+→"Several people are typing…". Beyond-spec: chat arrival clears that sender's typing indicator immediately.
 - **Three-profile Playwright smoke — 7/7 green** before merge (typing visible <1.5s, decay ~3.5s, three-peer join, ~4 frames over 5s confirms throttle, chat + reactions intact, no console errors).
+=======
+- **v0.4.1 cut and fully deployed.** Typing indicator: protocol addition `TypingMsg` (no `until` field — receiver-side decay), relay broadcasts unrated (server still rewrites `from`/`name` from trusted `conn`). Panel renders `#cp-typing` above `#cp-form`: 1.5s send throttle on `input` events; receiver keeps `Map<ClientId, {name, timeoutId}>` with 3s decay per sender. Render rules: 0→hidden, 1→"X is typing…", 2→"X and Y are typing…", 3+→"Several people are typing…". Squash-merged via [PR #3](https://github.com/AviouslyAvi/Watch-Party/pull/3) as `48108f8`. CI auto-cut [v0.4.1 release](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.1).
+- **CI hardening: Node 22 pin + manual-dispatch lever.** Wrangler v4's first real exercise on the v0.4.1 merge failed — runner default Node 20, Wrangler v4 requires ≥22, `cloudflare/wrangler-action@v4` doesn't pin Node itself. Added `actions/setup-node@v4` with `node-version: 22` to both `landing` and `relay` jobs in `.github/workflows/deploy.yml`. Also added `workflow_dispatch` with `force_relay` / `force_landing` inputs so we can redeploy on-demand without no-op commits. Used `force_relay=true` to redeploy the relay with the typing handler (path filter skipped relay on the .github-only fix commit).
+>>>>>>> Stashed changes
 
 ## What earlier sessions shipped (kept for context)
 
@@ -33,12 +46,20 @@ v0.4.0 emoji reactions remain live on top of v0.4.1.
 
 Commits on `main` (most recent first):
 - `48108f8` — feat: typing indicator (v0.4.1) (#3)
+<<<<<<< Updated upstream
 - `1849fae` — ci: bump cloudflare/wrangler-action v3 → v4
 - `5219136` — ci: sync extension-build/ for v0.4.0 [skip ci]
 - `19127ac` — v0.4.0: emoji reactions
 - `62d49c3` — feat: emoji reactions (#2)
 - `7003da5` — chore: upgrade wrangler 3.114.17 → 4.92.0
 
+=======
+- `1849fae` — ci: bump cloudflare/wrangler-action v3 → v4 for wrangler v4 support
+- `62d49c3` — feat: emoji reactions (#2)
+
+Plus CI follow-ups on `main` after the merge: Node 22 pin for landing+relay, and `workflow_dispatch` (`force_relay` / `force_landing`).
+
+>>>>>>> Stashed changes
 Releases: [v0.4.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.1) · [v0.4.0](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.0) · [v0.3.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1) · [v0.3.0](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.0)
 
 ## Threat model in plain terms
@@ -51,13 +72,23 @@ Releases: [v0.4.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.
 
 ## Exact next step
 
+<<<<<<< Updated upstream
 Pick one when next session opens:
 
 1. **Eyeball v0.4.0 reactions + v0.4.1 typing indicator in two real profiles for 60s.** Validate the float animation feel and the typing-indicator UX (does 1.5s throttle / 3s decay feel right in real conversation, not just smoke). If anything feels off, tune `REACTION_FLOAT_MS`, the `@keyframes cp-float-up` curve, or the typing constants in `panel.ts` / `main.ts`.
 2. **Manual smoke on prod for v0.3.1 onboarding flow** (still owed). Two profiles: Profile A clicks "Copy onboarding link", Profile B pastes → invited hero → install → auto-forward. Bonus: broken fragment fallback, mid-countdown cancel.
 3. **Peer-color hash** (deterministic color per ClientId). Pure client-side cosmetic, no protocol change. Pairs well with typing indicator and chat sender labels.
+=======
+1. **Eyeball v0.4.1 typing in two real profiles for 60s in prod.** Both must reload from the v0.4.1 zip first (extension users) or wait for the userscript auto-update banner (Tampermonkey). Type in Profile A → confirm "Avi is typing…" appears in Profile B within ~1.5s and clears within ~3s of stopping. Headless smoke covered the protocol; this is just feel.
+
+Pick one after:
+
+2. **Manual smoke on prod for v0.3.1 onboarding flow** (still owed). Two profiles: Profile A clicks "Copy onboarding link", Profile B pastes → invited hero → install → auto-forward. Bonus: broken fragment fallback, mid-countdown cancel.
+3. **Eyeball v0.4.0 reactions float feel** in two real profiles — still parked from last session.
+>>>>>>> Stashed changes
 4. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
 5. **Service-worker WS migration** so SPA episode navigation doesn't drop the room (Cineby etc.).
+6. **Peer-color hash** (deterministic color per ClientId). Pure client-side cosmetic, no protocol change — could pair nicely with typing for legibility ("Avi is typing…" colored to match their chat name).
 
 ## Open decisions
 
@@ -69,5 +100,5 @@ Pick one when next session opens:
 - CSP-locked stream providers on Cineby still won't accept the content script; user works around it by switching source.
 - WS reconnect on close is naive (fixed 2s). Fine for v1.
 - CI's `deploy.yml` is load-bearing: auto-cuts a GitHub release whenever `client/extension/manifest.json` changes, auto-deploys the landing page whenever `landing/**` changes. Don't bump the manifest version casually — it will publish.
-- Relay deploy is gated on `relay/**` or `shared/**` changes. Safe to push client-only changes without republishing the relay.
-- Wrangler v4 has not yet exercised in CI on a real workload (path filters skipped it on the last few pushes). First exercise will be the next `relay/**` or `landing/**` change.
+- Relay deploy is gated on `relay/**` or `shared/**` changes. Safe to push client-only changes without republishing the relay. If a merge bumps the manifest **and** touches `shared/`/`relay/` (like v0.4.1 did), the relay deploy must succeed too — otherwise the client ships ahead of the server and features silently no-op. Use `gh workflow run deploy.yml --ref main -f force_relay=true` to redeploy on-demand.
+- ✅ Wrangler v4 is now exercised in CI on Node 22 (confirmed live by the force_relay run on `48108f8`-era main). Both `landing` and `relay` jobs pin Node 22 explicitly.
