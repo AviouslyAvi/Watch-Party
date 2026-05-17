@@ -3,6 +3,16 @@ name: deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_relay:
+        description: "Force-deploy relay (bypass path filter)"
+        type: boolean
+        default: false
+      force_landing:
+        description: "Force-deploy landing (bypass path filter)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -38,7 +48,7 @@ jobs:
 
   landing:
     needs: changes
-    if: needs.changes.outputs.landing == 'true'
+    if: needs.changes.outputs.landing == 'true' || inputs.force_landing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +64,7 @@ jobs:
 
   relay:
     needs: changes
-    if: needs.changes.outputs.relay == 'true'
+    if: needs.changes.outputs.relay == 'true' || inputs.force_relay
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
