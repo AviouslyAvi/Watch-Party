@@ -54,7 +54,7 @@ function bootTopFrame() {
     },
     onSendChat: (text) => {
       send({ type: "chat", from: you, name: me, text, ts: Date.now() });
-      panel.appendChat(me, text);
+      panel.appendChat(you, me, text);
     },
     onSubmitUsername: (name) => {
       me = name;
@@ -162,10 +162,10 @@ function bootTopFrame() {
         panel.appendSystem("Only the admin can control playback.");
         return;
       case "chat":
-        if (msg.from !== you) panel.appendChat(msg.name, msg.text);
+        if (msg.from !== you) panel.appendChat(msg.from, msg.name, msg.text);
         return;
       case "reaction":
-        panel.showReaction(msg.from === you ? "you" : msg.name, msg.emoji);
+        panel.showReaction(msg.from, msg.from === you ? "you" : msg.name, msg.emoji);
         return;
       case "typing":
         if (msg.from !== you) panel.showTyping(msg.from, msg.name);

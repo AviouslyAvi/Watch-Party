@@ -1,5 +1,6 @@
 import type { ClientId, Participant, ReactionEmoji } from "../../../shared/protocol";
 import { REACTION_EMOJIS } from "../../../shared/protocol";
+import { colorFor } from "./peer-color";
 
 export interface PanelState {
   you: string;
@@ -151,13 +152,23 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   const typingEl = $("#cp-typing") as HTMLDivElement;
   const typers = new Map<ClientId, { name: string; timeoutId: number }>();
   function renderTyping() {
-    const names = [...typers.values()].map((v) => v.name);
-    let text = "";
-    if (names.length === 1) text = `${names[0]} is typing…`;
-    else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing…`;
-    else if (names.length >= 3) text = "Several people are typing…";
-    typingEl.textContent = text;
-    typingEl.style.opacity = names.length > 0 ? "1" : "0";
+    const entries = [...typers.entries()];
+    typingEl.innerHTML = "";
+    if (entries.length >= 3) {
+      typingEl.textContent = "Several people are typing…";
+    } else if (entries.length > 0) {
+      const nameSpan = (id: ClientId, name: string) =>
+        `<span style="color:${colorFor(id)};">${escapeHtml(name)}</span>`;
+      if (entries.length === 1) {
+        const [id, v] = entries[0];
+        typingEl.innerHTML = `${nameSpan(id, v.name)} is typing…`;
+      } else {
+        const [idA, vA] = entries[0];
+        const [idB, vB] = entries[1];
+        typingEl.innerHTML = `${nameSpan(idA, vA.name)} and ${nameSpan(idB, vB.name)} are typing…`;
+      }
+    }
+    typingEl.style.opacity = entries.length > 0 ? "1" : "0";
   }
   function showTyping(from: ClientId, name: string) {
     const existing = typers.get(from);
@@ -181,7 +192,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
 
   const floatLayer = $("#cp-reactions-float") as HTMLDivElement;
-  function showReaction(name: string, emoji: string) {
+  function showReaction(id: ClientId, name: string, emoji: string) {
     while (floatLayer.children.length >= REACTION_FLOAT_MAX) {
       floatLayer.firstChild?.remove();
     }
@@ -193,7 +204,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
       animation: cp-float-up ${REACTION_FLOAT_MS}ms ease-out forwards;
       white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.7);
     `;
-    el.innerHTML = `<span>${emoji}</span> <span style="font-size:11px;color:#ddd;">${escapeHtml(name)}</span>`;
+    el.innerHTML = `<span>${emoji}</span> <span style="font-size:11px;color:${colorFor(id)};">${escapeHtml(name)}</span>`;
     floatLayer.appendChild(el);
     setTimeout(() => el.remove(), REACTION_FLOAT_MS + 50);
   }
@@ -257,14 +268,17 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     keyInput.value = s.passphrase ?? "";
     ffa.checked = s.freeForAll;
     ($("#cp-people") as HTMLDivElement).innerHTML = s.participants
-      .map((p) => `<div>${p.isAdmin ? "👑 " : ""}${escapeHtml(p.name)}${p.id === s.you ? " (you)" : ""}</div>`)
+      .map(
+        (p) =>
+          `<div>${p.isAdmin ? "👑 " : ""}<span style="color:${colorFor(p.id)};">${escapeHtml(p.name)}</span>${p.id === s.you ? " (you)" : ""}</div>`,
+      )
       .join("");
   }
 
-  function appendChat(name: string, text: string) {
+  function appendChat(id: ClientId, name: string, text: string) {
     const div = document.createElement("div");
     div.style.marginBottom = "6px";
-    div.innerHTML = `<b style="color:#60a5fa;">${escapeHtml(name)}:</b> ${escapeHtml(text)}`;
+    div.innerHTML = `<b style="color:${colorFor(id)};">${escapeHtml(name)}:</b> ${escapeHtml(text)}`;
     const chat = $("#cp-chat") as HTMLDivElement;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
