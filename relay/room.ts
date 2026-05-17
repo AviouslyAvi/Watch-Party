@@ -110,6 +110,10 @@ export class Room {
           );
           return;
         }
+        case "typing": {
+          this.broadcast({ type: "typing", from: conn.id, name: conn.name, ts: Date.now() }, null);
+          return;
+        }
         case "ffa": {
           if (conn.id !== this.adminId) return;
           this.freeForAll = msg.freeForAll;

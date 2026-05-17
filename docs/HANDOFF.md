@@ -1,13 +1,13 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-05-16
-Milestone: **v0.4.0 shipped — emoji reactions live in prod**
+Milestone: **v0.4.1 smoke-passed — typing indicator on `feat/typing-indicator`, ready to merge**
 
 ## Status
 
-v0.4.0 is live. Existing v0.3.1 Tampermonkey users see the auto-update banner on next page reload. Extension users need to reload-from-unpacked or refresh from the new zip — there's no auto-update channel.
+v0.4.1 (typing indicator) is implemented end-to-end on branch `feat/typing-indicator`, builds clean, and **passed two-profile Playwright smoke 7/7 green** (typing visible <1.5s, opacity decays to 0 within ~3.5s, three-peer "A and B are typing…", 4 outbound frames over 5s — throttle confirmed, chat + reactions intact, no console errors). Pushed to origin. **Not yet merged to main.** Merge triggers CI's `extension-release` job → auto-cuts v0.4.1 release.
 
-The orphan branch `claude/vigorous-nightingale-217085` (commit `7003da5`, already on main) is **deleted** from local + origin. Tree is clean.
+v0.4.0 (emoji reactions) is live in prod. Existing v0.3.1 Tampermonkey users see the auto-update banner on next page reload. Extension users need to reload-from-unpacked or refresh from the new zip — there's no auto-update channel.
 
 ### Production endpoints
 
@@ -20,13 +20,11 @@ The orphan branch `claude/vigorous-nightingale-217085` (commit `7003da5`, alread
 
 ## What this session shipped
 
+- **Typing indicator implemented and smoke-tested (v0.4.1 candidate).** Protocol addition `TypingMsg` (no `until` field — receiver-side decay), relay broadcasts unrated (no limit, no allowlist — server still rewrites `from`/`name` from trusted `conn`). Panel renders `#cp-typing` above `#cp-form`: client-side 1.5s send throttle on `input` events, receiver maintains `Map<ClientId, {name, timeoutId}>` with 3s decay per sender. Render rules: 0→hidden, 1→"X is typing…", 2→"X and Y are typing…", 3+→"Several people are typing…". Versions bumped to 0.4.1 (`banner.txt`, `manifest.json`). Three-profile Playwright smoke 7/7 green. Branch pushed; awaiting merge to main.
+
 - **v0.4.0 cut.** Emoji reactions feature merged via [PR #2](https://github.com/AviouslyAvi/Watch-Party/pull/2) (squash `62d49c3`). Manifest + banner bumped on main; CI's `extension-release` job auto-cut the GitHub release. Reactions: six-emoji bar (❤️ 😂 🔥 👏 😮 👀) below chat, click broadcasts a `ReactionMsg`, all peers see the emoji rise above chat with sender's name, fades after ~2s. DOM-cap 5 simultaneous floats; relay rate-limits 5 reactions / 10s per conn; server-side emoji allowlist drops anything off-list silently.
-- **Two-profile Playwright smoke — 17/17 green.** Validated: bidirectional float render for all five primary emojis with correct sender labels, both connections survive a 10-click spam without disconnect, raw `ws.send({emoji:"💣"})` is dropped by relay (never rendered on the other peer), no console errors, chat round-trip still works alongside. Smoke script + tmp worktree torn down.
+- **Two-profile Playwright smoke for v0.4.0 — 17/17 green.** Validated: bidirectional float render for all five primary emojis with correct sender labels, both connections survive a 10-click spam without disconnect, raw `ws.send({emoji:"💣"})` is dropped by relay (never rendered on the other peer), no console errors, chat round-trip still works alongside. Smoke script + tmp worktree torn down.
 - **Orphan branch cleaned up.** `claude/vigorous-nightingale-217085` deleted local + origin.
-- **Typing indicator queued.** Next presence primitive. Scope note at [docs/decisions/2026-05-16-typing-indicator.md](decisions/2026-05-16-typing-indicator.md) covers protocol addition (`TypingMsg`, no rate limit, client-side 1.5s send throttle, receiver-side 3s decay), files touched, and the one open question (throttle-vs-decay ratio).
-
-## What earlier sessions shipped (kept for context)
-
 - **v0.3.1 release.** Bumped manifest + banner. CI rebuilt extension, zipped, published [Watch-Party v0.3.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.3.1).
 - **Landing deep-link helper live.** Userscript panel has "Copy onboarding link" button. Landing parses `v/party/key` fragment, shows invited hero, auto-forwards when extension marker present.
 - **Wrangler 3 → 4.92.0 upgrade landed on main.** CI path-filtered, will first exercise on the next `relay/**` or `landing/**` change.
@@ -48,11 +46,12 @@ Releases: [v0.4.0](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.
 
 ## Exact next step
 
-Pick one when next session opens:
+1. **Merge `feat/typing-indicator` → `main` to publish v0.4.1.** Smoke is green; only step remaining is the merge. Fast-forward or squash either works — CI's `extension-release` job will tag `v0.4.1` and publish the zip because `client/extension/manifest.json` changed. After merge, watch `gh run watch` and confirm the release appears at `https://github.com/AviouslyAvi/Watch-Party/releases`.
 
-1. **Implement typing indicator** per [decisions/2026-05-16-typing-indicator.md](decisions/2026-05-16-typing-indicator.md). Protocol + relay + panel + main.ts wiring + a Playwright smoke (one peer types, the other sees "X is typing…" appear within 200ms and decay 3s after silence). Bump to v0.4.1 on ship.
-2. **Eyeball v0.4.0 reactions in two real profiles for 60s.** Validate the float animation feel (timing, offset jitter, fade curve) that headless can't judge. If anything feels off, tune `REACTION_FLOAT_MS` or the `@keyframes cp-float-up` curve.
-3. **Manual smoke on prod for v0.3.1 onboarding flow** (still owed from earlier session). Two profiles: Profile A clicks "Copy onboarding link", Profile B pastes → invited hero → install → auto-forward. Bonus: broken fragment fallback, mid-countdown cancel.
+Pick one after:
+
+2. **Eyeball v0.4.0 reactions in two real profiles for 60s.** Validate the float animation feel that headless can't judge. If anything feels off, tune `REACTION_FLOAT_MS` or the `@keyframes cp-float-up` curve.
+3. **Manual smoke on prod for v0.3.1 onboarding flow** (still owed). Two profiles: Profile A clicks "Copy onboarding link", Profile B pastes → invited hero → install → auto-forward. Bonus: broken fragment fallback, mid-countdown cancel.
 4. **Icon design.** Chrome still shows the puzzle-piece icon for the extension.
 5. **Service-worker WS migration** so SPA episode navigation doesn't drop the room (Cineby etc.).
 

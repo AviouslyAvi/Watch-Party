@@ -64,6 +64,9 @@ function bootTopFrame() {
     onReact: (emoji) => {
       send({ type: "reaction", from: you, name: me, emoji, ts: Date.now() });
     },
+    onTyping: () => {
+      send({ type: "typing", from: you, name: me, ts: Date.now() });
+    },
     onSetKey: (key) => {
       passphrase = key;
       writeRoomFragment(roomId, passphrase);
@@ -163,6 +166,9 @@ function bootTopFrame() {
         return;
       case "reaction":
         panel.showReaction(msg.from === you ? "you" : msg.name, msg.emoji);
+        return;
+      case "typing":
+        if (msg.from !== you) panel.showTyping(msg.from, msg.name);
         return;
       case "play":
       case "pause":

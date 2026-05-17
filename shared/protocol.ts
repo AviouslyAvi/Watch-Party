@@ -31,6 +31,13 @@ export function isReactionEmoji(s: unknown): s is ReactionEmoji {
   return typeof s === "string" && (REACTION_EMOJIS as readonly string[]).includes(s);
 }
 
+export type TypingMsg = {
+  type: "typing";
+  from: ClientId;
+  name: string;
+  ts: number;
+};
+
 export type PresenceMsg =
   | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
   | { type: "welcome"; you: ClientId; adminId: ClientId; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
@@ -42,7 +49,7 @@ export type PresenceMsg =
 
 export type Participant = { id: ClientId; name: string; isAdmin: boolean };
 
-export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | PresenceMsg;
+export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | TypingMsg | PresenceMsg;
 
 export function isSyncMsg(m: WireMsg): m is SyncMsg {
   return m.type === "play" || m.type === "pause" || m.type === "seek" || m.type === "state";

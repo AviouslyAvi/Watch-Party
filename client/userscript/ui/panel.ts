@@ -1,4 +1,4 @@
-import type { Participant, ReactionEmoji } from "../../../shared/protocol";
+import type { ClientId, Participant, ReactionEmoji } from "../../../shared/protocol";
 import { REACTION_EMOJIS } from "../../../shared/protocol";
 
 export interface PanelState {
@@ -18,10 +18,13 @@ export interface PanelHooks {
   onSubmitUsername: (name: string) => void;
   onSetKey: (key: string | null) => void;
   onReact: (emoji: ReactionEmoji) => void;
+  onTyping: () => void;
 }
 
 const REACTION_FLOAT_MAX = 5;
 const REACTION_FLOAT_MS = 2000;
+const TYPING_DECAY_MS = 3000;
+const TYPING_SEND_THROTTLE_MS = 1500;
 
 const SIDEBAR_WIDTH = 320;
 
@@ -84,6 +87,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
           (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid #2a2a2a;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`,
         ).join("")}
       </div>
+      <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:#888;opacity:0;transition:opacity 200ms;line-height:16px;"></div>
       <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
         <input id="cp-input" placeholder="Type a message…" style="flex:1;padding:10px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
         <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
@@ -133,6 +137,38 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
   const stop = (e: Event) => e.stopPropagation();
   for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+
+  let lastTypingSent = 0;
+  input.addEventListener("input", () => {
+    if (!input.value) return;
+    const now = Date.now();
+    if (now - lastTypingSent > TYPING_SEND_THROTTLE_MS) {
+      lastTypingSent = now;
+      hooks.onTyping();
+    }
+  });
+
+  const typingEl = $("#cp-typing") as HTMLDivElement;
+  const typers = new Map<ClientId, { name: string; timeoutId: number }>();
+  function renderTyping() {
+    const names = [...typers.values()].map((v) => v.name);
+    let text = "";
+    if (names.length === 1) text = `${names[0]} is typing…`;
+    else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing…`;
+    else if (names.length >= 3) text = "Several people are typing…";
+    typingEl.textContent = text;
+    typingEl.style.opacity = names.length > 0 ? "1" : "0";
+  }
+  function showTyping(from: ClientId, name: string) {
+    const existing = typers.get(from);
+    if (existing) clearTimeout(existing.timeoutId);
+    const timeoutId = window.setTimeout(() => {
+      typers.delete(from);
+      renderTyping();
+    }, TYPING_DECAY_MS);
+    typers.set(from, { name, timeoutId });
+    renderTyping();
+  }
 
   const reactionsBar = $("#cp-reactions") as HTMLDivElement;
   reactionsBar.addEventListener("click", (e) => {
@@ -251,7 +287,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     banner.style.display = "block";
   }
 
-  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction };
+  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping };
 }
 
 function escapeHtml(s: string) {
