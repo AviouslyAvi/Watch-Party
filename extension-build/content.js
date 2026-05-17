@@ -133,6 +133,8 @@
   // client/userscript/ui/panel.ts
   var REACTION_FLOAT_MAX = 5;
   var REACTION_FLOAT_MS = 2e3;
+  var TYPING_DECAY_MS = 3e3;
+  var TYPING_SEND_THROTTLE_MS = 1500;
   var SIDEBAR_WIDTH = 320;
   function mountPanel(hooks, initialUsername) {
     const host = document.createElement("div");
@@ -193,6 +195,7 @@
       (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid #2a2a2a;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`
     ).join("")}
       </div>
+      <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:#888;opacity:0;transition:opacity 200ms;line-height:16px;"></div>
       <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
         <input id="cp-input" placeholder="Type a message\u2026" style="flex:1;padding:10px;background:transparent;border:none;color:#eee;outline:none;font:inherit;"/>
         <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
@@ -238,6 +241,36 @@
     });
     const stop = (e) => e.stopPropagation();
     for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+    let lastTypingSent = 0;
+    input.addEventListener("input", () => {
+      if (!input.value) return;
+      const now = Date.now();
+      if (now - lastTypingSent > TYPING_SEND_THROTTLE_MS) {
+        lastTypingSent = now;
+        hooks.onTyping();
+      }
+    });
+    const typingEl = $("#cp-typing");
+    const typers = /* @__PURE__ */ new Map();
+    function renderTyping() {
+      const names = [...typers.values()].map((v) => v.name);
+      let text = "";
+      if (names.length === 1) text = `${names[0]} is typing\u2026`;
+      else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing\u2026`;
+      else if (names.length >= 3) text = "Several people are typing\u2026";
+      typingEl.textContent = text;
+      typingEl.style.opacity = names.length > 0 ? "1" : "0";
+    }
+    function showTyping(from, name) {
+      const existing = typers.get(from);
+      if (existing) clearTimeout(existing.timeoutId);
+      const timeoutId = window.setTimeout(() => {
+        typers.delete(from);
+        renderTyping();
+      }, TYPING_DECAY_MS);
+      typers.set(from, { name, timeoutId });
+      renderTyping();
+    }
     const reactionsBar = $("#cp-reactions");
     reactionsBar.addEventListener("click", (e) => {
       const t = e.target;
@@ -345,7 +378,7 @@
       banner.href = href;
       banner.style.display = "block";
     }
-    return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction };
+    return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping };
   }
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -404,6 +437,9 @@
       onReact: (emoji) => {
         send({ type: "reaction", from: you, name: me, emoji, ts: Date.now() });
       },
+      onTyping: () => {
+        send({ type: "typing", from: you, name: me, ts: Date.now() });
+      },
       onSetKey: (key) => {
         passphrase = key;
         writeRoomFragment(roomId, passphrase);
@@ -450,7 +486,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && latest !== `v${"0.4.0"}` && latest !== "0.4.0") {
+      if (latest && latest !== `v${"0.4.1"}` && latest !== "0.4.1") {
         panel.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
     });
@@ -498,6 +534,9 @@
           return;
         case "reaction":
           panel.showReaction(msg.from === you ? "you" : msg.name, msg.emoji);
+          return;
+        case "typing":
+          if (msg.from !== you) panel.showTyping(msg.from, msg.name);
           return;
         case "play":
         case "pause":
