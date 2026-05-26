@@ -427,7 +427,9 @@
         </section>
         <section>
           <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Behavior</div>
-          <button id="cp-replay-tour" style="width:100%;padding:5px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;">Replay onboarding tour</button>
+          <button id="cp-replay-tour" style="width:100%;padding:5px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;margin-bottom:6px;">Replay onboarding tour</button>
+          <button id="cp-deactivate" title="Closes the socket, tears down the chat, and remembers this site as off. Click the \u{1F3AC} button in the corner to turn it back on." style="width:100%;padding:5px;background:#3a1414;color:#fca5a5;border:1px solid #5c1f1f;border-radius:4px;cursor:pointer;font:inherit;">Turn off Watch-Party here</button>
+          <div style="font-size:11px;color:#777;margin-top:4px;line-height:1.4;">Dismisses the chat for this site. The \u{1F3AC} button in the corner reactivates. Invite links auto-reactivate.</div>
         </section>
         <section style="font-size:11px;color:#777;border-top:1px solid #2a2a2a;padding-top:8px;">
           Watch-Party. Room data lives in memory only \u2014 close the tab to leave.
@@ -477,6 +479,9 @@
       });
       $("#cp-replay-tour").addEventListener("click", () => {
         hooks.onReplayOnboarding();
+      });
+      $("#cp-deactivate").addEventListener("click", () => {
+        hooks.onDeactivate();
       });
       const renameForm = $("#cp-rename-form");
       const renameInput = $("#cp-rename-input");
@@ -927,9 +932,19 @@
     skipBtn.addEventListener("click", ctx.skip);
   }
 
+  // client/userscript/ui/activator.ts
+  var STORAGE_PREFIX = "cp-off:";
+  function setHostDisabled(disabled, host = location.hostname) {
+    try {
+      if (disabled) localStorage.setItem(STORAGE_PREFIX + host, "1");
+      else localStorage.removeItem(STORAGE_PREFIX + host);
+    } catch {
+    }
+  }
+
   // client/userscript/main.ts
   var LANDING_ORIGIN = "https://watch-party.pages.dev";
-  function bootTopFrame() {
+  function bootTopFrame(onDeactivated) {
     let me = loadStoredName() ?? "";
     const initial = ensureRoom();
     const roomId = initial.roomId;
@@ -1010,6 +1025,18 @@
       onReplayOnboarding: () => {
         resetOnboarded();
         launchOnboarding();
+      },
+      onDeactivate: () => {
+        setHostDisabled(true);
+        rejected = true;
+        panel?.destroy();
+        panel = null;
+        if (ws) try {
+          ws.close();
+        } catch {
+        }
+        ws = null;
+        onDeactivated?.();
       }
     };
     function mountUI() {
@@ -1073,7 +1100,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.6.2")) {
+      if (latest && gt(latest, "0.7.0")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
