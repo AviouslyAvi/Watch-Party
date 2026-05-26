@@ -41,21 +41,41 @@
         <p><a class="btn" href="https://github.com/AviouslyAvi/Watch-Party/releases/latest/download/avious-party.user.js" target="_blank" rel="noopener">Install userscript</a></p>
       </div>
     </div>
-    <p class="hint extension-instructions-lead"><strong>Extension steps</strong> (skip if you used the userscript):</p>
-    <ol class="install-steps">
-      <li><strong>Unzip</strong> the downloaded file. Remember where you put the unzipped folder.</li>
-      <li>Open <code>chrome://extensions</code> in Chrome. <span class="hint">(Copy-paste it — Chrome won't let links open this page.)</span></li>
-      <li>Flip on <strong>Developer mode</strong> — the toggle is in the <em>top-right corner</em> of the page.</li>
-      <li>Click <strong>Load unpacked</strong> (top-left, appears after Developer mode is on) and pick the unzipped folder.</li>
-      <li>Click the puzzle-piece <span aria-hidden="true">🧩</span> in your Chrome toolbar and pin <strong>Watch-Party</strong> so the icon is always visible.</li>
-    </ol>
+    <details class="path-steps" open>
+      <summary><strong>Extension steps</strong> — for the zip download</summary>
+      <ol class="install-steps">
+        <li><strong>Unzip</strong> the downloaded file. Remember where you put the unzipped folder.</li>
+        <li>Open <code>chrome://extensions</code> in Chrome. <span class="hint">(Copy-paste it — Chrome won't let links open this page.)</span></li>
+        <li>Flip on <strong>Developer mode</strong> — the toggle is in the <em>top-right corner</em> of the page.</li>
+        <li>Click <strong>Load unpacked</strong> (top-left, appears after Developer mode is on) and pick the unzipped folder.</li>
+        <li>Click the puzzle-piece <span aria-hidden="true">🧩</span> in your Chrome toolbar and pin <strong>Watch-Party</strong> so the icon is always visible.</li>
+      </ol>
+    </details>
+
+    <details class="path-steps">
+      <summary><strong>Userscript steps</strong> — for the one-click install</summary>
+      <ol class="install-steps">
+        <li>
+          Install a userscript manager once. Recommended:
+          <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener">Tampermonkey for Chrome</a>
+          (or <a href="https://addons.mozilla.org/firefox/addon/tampermonkey/" target="_blank" rel="noopener">Firefox</a>).
+          Alternatives: <a href="https://violentmonkey.github.io/get-it/" target="_blank" rel="noopener">Violentmonkey</a>, <a href="https://www.userscripts.net/get-greasemonkey-for-firefox" target="_blank" rel="noopener">Greasemonkey</a>.
+        </li>
+        <li>Click <strong>Install userscript</strong> above. Your userscript manager will pop up showing the script's metadata.</li>
+        <li>Click <strong>Install</strong> inside that dialog. Reload any tab where you want to use Watch-Party.</li>
+      </ol>
+      <p class="hint">Auto-updates on every release — no re-install on new versions.</p>
+    </details>
+
     <details class="troubleshoot">
       <summary>Trouble installing?</summary>
       <ul>
-        <li><strong>"Manifest file is missing or unreadable":</strong> you picked the zip or its parent folder. Pick the <em>unzipped</em> folder that directly contains <code>manifest.json</code>.</li>
-        <li><strong>No "Load unpacked" button:</strong> Developer mode isn't on yet. Toggle is upper-right of the extensions page.</li>
-        <li><strong>Chrome reopens and the extension is gone:</strong> Chrome occasionally disables unpacked extensions after a restart — re-enable it from <code>chrome://extensions</code>.</li>
-        <li><strong>Edge / Brave / Arc:</strong> same steps, same page (<code>edge://extensions</code>, <code>brave://extensions</code>, etc.). Firefox is not yet supported.</li>
+        <li><strong>Extension — "Manifest file is missing or unreadable":</strong> you picked the zip or its parent folder. Pick the <em>unzipped</em> folder that directly contains <code>manifest.json</code>.</li>
+        <li><strong>Extension — no "Load unpacked" button:</strong> Developer mode isn't on yet. Toggle is upper-right of the extensions page.</li>
+        <li><strong>Extension — Chrome reopens and it's gone:</strong> Chrome occasionally disables unpacked extensions after a restart — re-enable it from <code>chrome://extensions</code>.</li>
+        <li><strong>Userscript — clicking the button shows raw code:</strong> Tampermonkey/Violentmonkey isn't installed yet, or isn't enabled. Install one of them first, then re-click.</li>
+        <li><strong>Userscript — install dialog doesn't appear:</strong> some browsers block userscript URLs until you open the extensions page once. Open Tampermonkey's dashboard, then re-click Install userscript.</li>
+        <li><strong>Edge / Brave / Arc:</strong> same steps, same page (<code>edge://extensions</code>, <code>brave://extensions</code>, etc.). Firefox is supported via the userscript path only — the extension is Chrome/Chromium-only for now.</li>
       </ul>
     </details>
   </section>

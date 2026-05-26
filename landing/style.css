@@ -195,12 +195,45 @@ input[type="url"]:focus {
   text-align: center;
 }
 
-.extension-instructions-lead {
-  margin-top: 18px;
-  margin-bottom: 4px;
+.path-steps {
+  margin-top: 14px;
+  padding: 10px 14px 12px;
+  background: #0e0e11;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
 }
 
-.extension-instructions-lead strong { color: var(--fg); }
+.path-steps + .path-steps { margin-top: 8px; }
+
+.path-steps summary {
+  cursor: pointer;
+  color: var(--fg);
+  font-weight: 500;
+  list-style: none;
+  padding: 2px 0;
+}
+
+.path-steps summary::-webkit-details-marker { display: none; }
+
+.path-steps summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.path-steps[open] summary::before { transform: rotate(90deg); }
+
+.path-steps .install-steps {
+  margin: 10px 0 4px;
+  color: var(--fg);
+}
+
+.path-steps .install-steps li { color: var(--fg); }
+.path-steps .install-steps .hint { color: var(--muted); }
+.path-steps > .hint { margin: 8px 0 0; }
 
 .install-steps {
   margin: 12px 0 4px;
