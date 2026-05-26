@@ -98,12 +98,27 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     display: flex; flex-direction: column;
     transition: transform 200ms ease;
   `;
+  // Always-visible toggle tab. Lives outside the panel host so that hiding the
+  // panel (transform: translateX(320px)) doesn't drag the tab off-screen — the
+  // userscript path has no toolbar icon to fall back on, so this is the sole
+  // escape hatch when layout is "hidden". Position is set by applyLayout().
+  const tab = document.createElement("button");
+  tab.id = "cp-tab";
+  tab.title = "Toggle Watch-Party chat (Alt+Shift+W)";
+  tab.textContent = "›";
+  tab.style.cssText = `
+    position: fixed; top: 50%; right: ${SIDEBAR_WIDTH}px;
+    transform: translateY(-50%);
+    width: 28px; height: 56px;
+    background: var(--cp-bg, #141416); color: var(--cp-text, #eee);
+    border: 1px solid #333; border-right: none;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer; font-size: 14px; padding: 0;
+    z-index: 2147483647;
+    transition: right 200ms ease;
+  `;
+
   host.innerHTML = `
-    <button id="cp-tab" title="Toggle chat" style="
-      position:absolute; left:-28px; top:50%; transform:translateY(-50%);
-      width:28px; height:56px; background:var(--cp-bg,#141416); color:var(--cp-text,#eee);
-      border:1px solid #333; border-right:none; border-radius:8px 0 0 8px;
-      cursor:pointer; font-size:14px; padding:0;">›</button>
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <span style="font-weight:600;color:#f97316;">🎬 Watch-Party</span>
       <div style="display:flex;gap:4px;align-items:center;">
@@ -163,6 +178,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     </div>
   `;
   document.body.appendChild(host);
+  document.body.appendChild(tab);
 
   if (!document.getElementById("cp-keyframes")) {
     const styleEl = document.createElement("style");
@@ -210,8 +226,10 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     Array.from(host.querySelectorAll<HTMLButtonElement>(".cp-mode-btn")).forEach((btn) => {
       btn.dataset.active = btn.dataset.mode === mode ? "1" : "0";
     });
-    const tab = $("#cp-tab") as HTMLButtonElement;
     tab.textContent = mode === "hidden" ? "‹" : "›";
+    // Pin tab to the right edge of the viewport when hidden so it's always
+    // reachable; otherwise sit it against the panel's left edge.
+    tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_WIDTH}px`;
   }
 
   function setLayoutMode(mode: LayoutMode, persist = true) {
@@ -226,9 +244,20 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
       if (m) setLayoutMode(m);
     });
   });
-  ($("#cp-tab") as HTMLButtonElement).addEventListener("click", () => {
+  tab.addEventListener("click", () => {
     setLayoutMode(settings.layoutMode === "hidden" ? "overlay" : "hidden");
   });
+
+  // Keyboard escape hatch — Alt+Shift+W toggles the panel. Critical for the
+  // userscript path, since there's no toolbar icon if the tab somehow gets
+  // covered by a site's own UI.
+  const layoutKeyHandler = (e: KeyboardEvent) => {
+    if (e.altKey && e.shiftKey && (e.key === "W" || e.key === "w")) {
+      e.preventDefault();
+      setLayoutMode(settings.layoutMode === "hidden" ? "overlay" : "hidden");
+    }
+  };
+  document.addEventListener("keydown", layoutKeyHandler);
 
   // Fullscreen guard — force hidden while in fullscreen, restore on exit.
   let preFullscreenMode: LayoutMode | null = null;
@@ -672,12 +701,14 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     for (const t of typers.values()) clearTimeout(t.timeoutId);
     typers.clear();
     if (reactionThrottleTimer !== null) clearTimeout(reactionThrottleTimer);
+    document.removeEventListener("keydown", layoutKeyHandler);
     // Restore the original margin-right we cached.
     const docEl = document.documentElement;
     type DocWithCache = HTMLElement & { [ORIGINAL_MARGIN_RIGHT_KEY]?: string };
     const cached = (docEl as DocWithCache)[ORIGINAL_MARGIN_RIGHT_KEY];
     if (cached !== undefined) docEl.style.marginRight = cached;
     host.remove();
+    tab.remove();
   }
 
   return {
