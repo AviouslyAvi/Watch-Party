@@ -214,12 +214,22 @@
     display: flex; flex-direction: column;
     transition: transform 200ms ease;
   `;
+    const tab = document.createElement("button");
+    tab.id = "cp-tab";
+    tab.title = "Toggle Watch-Party chat (Alt+Shift+W)";
+    tab.textContent = "\u203A";
+    tab.style.cssText = `
+    position: fixed; top: 50%; right: ${SIDEBAR_WIDTH}px;
+    transform: translateY(-50%);
+    width: 28px; height: 56px;
+    background: var(--cp-bg, #141416); color: var(--cp-text, #eee);
+    border: 1px solid #333; border-right: none;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer; font-size: 14px; padding: 0;
+    z-index: 2147483647;
+    transition: right 200ms ease;
+  `;
     host.innerHTML = `
-    <button id="cp-tab" title="Toggle chat" style="
-      position:absolute; left:-28px; top:50%; transform:translateY(-50%);
-      width:28px; height:56px; background:var(--cp-bg,#141416); color:var(--cp-text,#eee);
-      border:1px solid #333; border-right:none; border-radius:8px 0 0 8px;
-      cursor:pointer; font-size:14px; padding:0;">\u203A</button>
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <span style="font-weight:600;color:#f97316;">\u{1F3AC} Watch-Party</span>
       <div style="display:flex;gap:4px;align-items:center;">
@@ -279,6 +289,7 @@
     </div>
   `;
     document.body.appendChild(host);
+    document.body.appendChild(tab);
     if (!document.getElementById("cp-keyframes")) {
       const styleEl = document.createElement("style");
       styleEl.id = "cp-keyframes";
@@ -321,8 +332,8 @@
       Array.from(host.querySelectorAll(".cp-mode-btn")).forEach((btn) => {
         btn.dataset.active = btn.dataset.mode === mode ? "1" : "0";
       });
-      const tab = $("#cp-tab");
       tab.textContent = mode === "hidden" ? "\u2039" : "\u203A";
+      tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_WIDTH}px`;
     }
     function setLayoutMode(mode, persist = true) {
       settings.layoutMode = mode;
@@ -335,9 +346,16 @@
         if (m) setLayoutMode(m);
       });
     });
-    $("#cp-tab").addEventListener("click", () => {
+    tab.addEventListener("click", () => {
       setLayoutMode(settings.layoutMode === "hidden" ? "overlay" : "hidden");
     });
+    const layoutKeyHandler = (e) => {
+      if (e.altKey && e.shiftKey && (e.key === "W" || e.key === "w")) {
+        e.preventDefault();
+        setLayoutMode(settings.layoutMode === "hidden" ? "overlay" : "hidden");
+      }
+    };
+    document.addEventListener("keydown", layoutKeyHandler);
     let preFullscreenMode = null;
     document.addEventListener("fullscreenchange", () => {
       if (document.fullscreenElement) {
@@ -736,10 +754,12 @@
       for (const t of typers.values()) clearTimeout(t.timeoutId);
       typers.clear();
       if (reactionThrottleTimer !== null) clearTimeout(reactionThrottleTimer);
+      document.removeEventListener("keydown", layoutKeyHandler);
       const docEl = document.documentElement;
       const cached = docEl[ORIGINAL_MARGIN_RIGHT_KEY];
       if (cached !== void 0) docEl.style.marginRight = cached;
       host.remove();
+      tab.remove();
     }
     return {
       setState,
@@ -1053,7 +1073,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.6.1")) {
+      if (latest && gt(latest, "0.6.2")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
