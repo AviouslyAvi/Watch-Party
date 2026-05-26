@@ -1,5 +1,60 @@
 "use strict";
 (() => {
+  // client/userscript/iframe-bridge.ts
+  var TAG = "__aviousParty__";
+  function runIframeBridge() {
+    let video = null;
+    function findVideo() {
+      return document.querySelector("video");
+    }
+    function bind(v) {
+      if (video === v) return;
+      video = v;
+      const post = (event) => {
+        parent.postMessage(
+          { [TAG]: true, kind: "videoEvent", event, at: v.currentTime, paused: v.paused },
+          "*"
+        );
+      };
+      v.addEventListener("play", () => post("play"));
+      v.addEventListener("pause", () => post("pause"));
+      v.addEventListener("seeked", () => post("seek"));
+    }
+    const mo = new MutationObserver(() => {
+      const v = findVideo();
+      if (v) bind(v);
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+    const initial = findVideo();
+    if (initial) bind(initial);
+    window.addEventListener("message", (e) => {
+      const data = e.data;
+      if (!data || typeof data !== "object" || !data[TAG]) return;
+      const m = data;
+      const v = video ?? findVideo();
+      if (!v) return;
+      switch (m.kind) {
+        case "play":
+          v.play().catch(() => {
+          });
+          return;
+        case "pause":
+          v.pause();
+          return;
+        case "seek":
+          v.currentTime = m.at;
+          return;
+        case "queryState":
+          parent.postMessage(
+            { [TAG]: true, kind: "videoState", at: v.currentTime, paused: v.paused, hasVideo: true },
+            "*"
+          );
+          return;
+      }
+    });
+  }
+  var IFRAME_TAG = TAG;
+
   // shared/sync.ts
   var SUPPRESS_MS = 300;
   function createSyncClient(opts) {
@@ -72,63 +127,19 @@
     return { applyRemote, revert, startHeartbeat, stopHeartbeat, dispose };
   }
 
-  // client/userscript/iframe-bridge.ts
-  var TAG = "__aviousParty__";
-  function runIframeBridge() {
-    let video = null;
-    function findVideo() {
-      return document.querySelector("video");
-    }
-    function bind(v) {
-      if (video === v) return;
-      video = v;
-      const post = (event) => {
-        parent.postMessage(
-          { [TAG]: true, kind: "videoEvent", event, at: v.currentTime, paused: v.paused },
-          "*"
-        );
-      };
-      v.addEventListener("play", () => post("play"));
-      v.addEventListener("pause", () => post("pause"));
-      v.addEventListener("seeked", () => post("seek"));
-    }
-    const mo = new MutationObserver(() => {
-      const v = findVideo();
-      if (v) bind(v);
-    });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
-    const initial = findVideo();
-    if (initial) bind(initial);
-    window.addEventListener("message", (e) => {
-      const data = e.data;
-      if (!data || typeof data !== "object" || !data[TAG]) return;
-      const m = data;
-      const v = video ?? findVideo();
-      if (!v) return;
-      switch (m.kind) {
-        case "play":
-          v.play().catch(() => {
-          });
-          return;
-        case "pause":
-          v.pause();
-          return;
-        case "seek":
-          v.currentTime = m.at;
-          return;
-        case "queryState":
-          parent.postMessage(
-            { [TAG]: true, kind: "videoState", at: v.currentTime, paused: v.paused, hasVideo: true },
-            "*"
-          );
-          return;
-      }
-    });
-  }
-  var IFRAME_TAG = TAG;
-
   // shared/protocol.ts
   var REACTION_EMOJIS = ["\u2764\uFE0F", "\u{1F602}", "\u{1F525}", "\u{1F44F}", "\u{1F62E}", "\u{1F440}"];
+
+  // client/userscript/ui/peer-color.ts
+  function colorFor(id) {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) {
+      h ^= id.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const hue = (h >>> 0) % 360;
+    return `hsl(${hue}, 70%, 65%)`;
+  }
 
   // client/userscript/ui/panel.ts
   var REACTION_FLOAT_MAX = 5;
@@ -253,13 +264,22 @@
     const typingEl = $("#cp-typing");
     const typers = /* @__PURE__ */ new Map();
     function renderTyping() {
-      const names = [...typers.values()].map((v) => v.name);
-      let text = "";
-      if (names.length === 1) text = `${names[0]} is typing\u2026`;
-      else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing\u2026`;
-      else if (names.length >= 3) text = "Several people are typing\u2026";
-      typingEl.textContent = text;
-      typingEl.style.opacity = names.length > 0 ? "1" : "0";
+      const entries = [...typers.entries()];
+      typingEl.innerHTML = "";
+      if (entries.length >= 3) {
+        typingEl.textContent = "Several people are typing\u2026";
+      } else if (entries.length > 0) {
+        const nameSpan = (id, name) => `<span style="color:${colorFor(id)};">${escapeHtml(name)}</span>`;
+        if (entries.length === 1) {
+          const [id, v] = entries[0];
+          typingEl.innerHTML = `${nameSpan(id, v.name)} is typing\u2026`;
+        } else {
+          const [idA, vA] = entries[0];
+          const [idB, vB] = entries[1];
+          typingEl.innerHTML = `${nameSpan(idA, vA.name)} and ${nameSpan(idB, vB.name)} are typing\u2026`;
+        }
+      }
+      typingEl.style.opacity = entries.length > 0 ? "1" : "0";
     }
     function showTyping(from, name) {
       const existing = typers.get(from);
@@ -281,7 +301,7 @@
       hooks.onReact(emoji);
     });
     const floatLayer = $("#cp-reactions-float");
-    function showReaction(name, emoji) {
+    function showReaction(id, name, emoji) {
       while (floatLayer.children.length >= REACTION_FLOAT_MAX) {
         floatLayer.firstChild?.remove();
       }
@@ -293,7 +313,7 @@
       animation: cp-float-up ${REACTION_FLOAT_MS}ms ease-out forwards;
       white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.7);
     `;
-      el.innerHTML = `<span>${emoji}</span> <span style="font-size:11px;color:#ddd;">${escapeHtml(name)}</span>`;
+      el.innerHTML = `<span>${emoji}</span> <span style="font-size:11px;color:${colorFor(id)};">${escapeHtml(name)}</span>`;
       floatLayer.appendChild(el);
       setTimeout(() => el.remove(), REACTION_FLOAT_MS + 50);
     }
@@ -353,12 +373,14 @@
       keyToggle.textContent = s.passphrase ? "\u{1F513} Key set \u2014 change or clear" : "\u{1F512} Add room key";
       keyInput.value = s.passphrase ?? "";
       ffa.checked = s.freeForAll;
-      $("#cp-people").innerHTML = s.participants.map((p) => `<div>${p.isAdmin ? "\u{1F451} " : ""}${escapeHtml(p.name)}${p.id === s.you ? " (you)" : ""}</div>`).join("");
+      $("#cp-people").innerHTML = s.participants.map(
+        (p) => `<div>${p.isAdmin ? "\u{1F451} " : ""}<span style="color:${colorFor(p.id)};">${escapeHtml(p.name)}</span>${p.id === s.you ? " (you)" : ""}</div>`
+      ).join("");
     }
-    function appendChat(name, text) {
+    function appendChat(id, name, text) {
       const div = document.createElement("div");
       div.style.marginBottom = "6px";
-      div.innerHTML = `<b style="color:#60a5fa;">${escapeHtml(name)}:</b> ${escapeHtml(text)}`;
+      div.innerHTML = `<b style="color:${colorFor(id)};">${escapeHtml(name)}:</b> ${escapeHtml(text)}`;
       const chat = $("#cp-chat");
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
@@ -378,23 +400,19 @@
       banner.href = href;
       banner.style.display = "block";
     }
-    return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping };
+    function destroy() {
+      for (const t of typers.values()) clearTimeout(t.timeoutId);
+      typers.clear();
+      host.remove();
+    }
+    return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping, destroy };
   }
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
   // client/userscript/main.ts
-  var isTopFrame = window === window.top;
   var LANDING_ORIGIN = "https://watch-party.pages.dev";
-  if (!isTopFrame) {
-    runIframeBridge();
-  } else {
-    if (location.hostname === "watch-party.pages.dev") {
-      document.documentElement.dataset.watchPartyInstalled = "1";
-    }
-    bootTopFrame();
-  }
   function bootTopFrame() {
     let me = loadStoredName() ?? "";
     const initial = ensureRoom();
@@ -406,19 +424,22 @@
     let freeForAll = false;
     let ws = null;
     let rejected = false;
-    const panel = mountPanel({
+    let participants = [];
+    let pendingUpdate = null;
+    let panel = null;
+    const panelHooks = {
       onCopyLink: () => {
         const url = currentRoomUrl();
         navigator.clipboard.writeText(url).then(
-          () => panel.appendSystem("Room link copied."),
-          () => panel.appendSystem("Copy failed \u2014 link: " + url)
+          () => panel?.appendSystem("Room link copied."),
+          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
         );
       },
       onShareForNonInstallers: () => {
         const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
         navigator.clipboard.writeText(url).then(
-          () => panel.appendSystem("Onboarding link copied \u2014 friends without the extension will see install steps."),
-          () => panel.appendSystem("Copy failed \u2014 link: " + url)
+          () => panel?.appendSystem("Onboarding link copied \u2014 friends without the extension will see install steps."),
+          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
         );
       },
       onToggleFFA: (next) => {
@@ -427,7 +448,7 @@
       },
       onSendChat: (text) => {
         send({ type: "chat", from: you, name: me, text, ts: Date.now() });
-        panel.appendChat(me, text);
+        panel?.appendChat(you, me, text);
       },
       onSubmitUsername: (name) => {
         me = name;
@@ -443,7 +464,7 @@
       onSetKey: (key) => {
         passphrase = key;
         writeRoomFragment(roomId, passphrase);
-        panel.appendSystem(
+        panel?.appendSystem(
           key ? "\u{1F512} Room key set. Share the new link \u2014 friends will need to reconnect with it." : "\u{1F513} Room key cleared."
         );
         if (ws) try {
@@ -451,7 +472,15 @@
         } catch {
         }
       }
-    }, me || void 0);
+    };
+    function mountUI() {
+      panel = mountPanel(panelHooks, me || void 0);
+      if (you) {
+        panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+      }
+      if (pendingUpdate) panel.showUpdateBanner(pendingUpdate.tag, pendingUpdate.href);
+    }
+    mountUI();
     const video = makeTopFrameAdapter();
     const sync = createSyncClient({
       video,
@@ -480,14 +509,15 @@
       });
       ws.addEventListener("close", () => {
         if (rejected) return;
-        panel.appendSystem("Disconnected. Reconnecting in 2s\u2026");
+        panel?.appendSystem("Disconnected. Reconnecting in 2s\u2026");
         setTimeout(connect, 2e3);
       });
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && latest !== `v${"0.4.1"}` && latest !== "0.4.1") {
-        panel.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
+      if (latest && latest !== `v${"0.5.0"}` && latest !== "0.5.0") {
+        pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
+        panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
     });
     function handle(msg) {
@@ -496,24 +526,26 @@
           you = msg.you;
           adminId = msg.adminId;
           freeForAll = msg.freeForAll;
-          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+          participants = msg.participants;
+          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
           if (you === adminId) {
             sync.startHeartbeat();
-            panel.appendSystem("You are the admin.");
+            panel?.appendSystem("You are the admin.");
           }
           if (msg.lastState) sync.applyRemote(msg.lastState);
           return;
         case "participants":
           adminId = msg.adminId;
-          panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+          participants = msg.participants;
+          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
           if (you === adminId) sync.startHeartbeat();
           return;
         case "ffa":
           freeForAll = msg.freeForAll;
-          panel.appendSystem(`Free-for-all: ${freeForAll ? "ON" : "OFF"}`);
+          panel?.appendSystem(`Free-for-all: ${freeForAll ? "ON" : "OFF"}`);
           return;
         case "pathDiff":
-          panel.appendSystem(`\u26A0\uFE0F Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
+          panel?.appendSystem(`\u26A0\uFE0F Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
           return;
         case "rejected":
           rejected = true;
@@ -521,22 +553,22 @@
             ws.close();
           } catch {
           }
-          panel.appendSystem(
+          panel?.appendSystem(
             msg.reason === "passphrase" ? "\u274C Wrong room key. Get the full share link from whoever set up the room." : "\u274C Connection rejected."
           );
           return;
         case "revert":
           sync.revert(msg.at, msg.paused);
-          panel.appendSystem("Only the admin can control playback.");
+          panel?.appendSystem("Only the admin can control playback.");
           return;
         case "chat":
-          if (msg.from !== you) panel.appendChat(msg.name, msg.text);
+          if (msg.from !== you) panel?.appendChat(msg.from, msg.name, msg.text);
           return;
         case "reaction":
-          panel.showReaction(msg.from === you ? "you" : msg.name, msg.emoji);
+          panel?.showReaction(msg.from, msg.from === you ? "you" : msg.name, msg.emoji);
           return;
         case "typing":
-          if (msg.from !== you) panel.showTyping(msg.from, msg.name);
+          if (msg.from !== you) panel?.showTyping(msg.from, msg.name);
           return;
         case "play":
         case "pause":
@@ -546,6 +578,25 @@
           return;
       }
     }
+    return {
+      teardownUI() {
+        panel?.destroy();
+        panel = null;
+      },
+      remountUI() {
+        if (!panel) mountUI();
+      },
+      shutdown() {
+        rejected = true;
+        panel?.destroy();
+        panel = null;
+        if (ws) try {
+          ws.close();
+        } catch {
+        }
+        ws = null;
+      }
+    };
   }
   function makeTopFrameAdapter() {
     let v = document.querySelector("video");
@@ -668,6 +719,33 @@
       return tag;
     } catch {
       return null;
+    }
+  }
+
+  // client/extension/content.ts
+  if (window !== window.top) {
+    runIframeBridge();
+  } else {
+    const w = window;
+    if (w.__WATCH_PARTY__) {
+      w.__WATCH_PARTY__.remount();
+    } else {
+      const handle = bootTopFrame();
+      w.__WATCH_PARTY__ = {
+        handle,
+        teardown: () => handle.teardownUI(),
+        remount: () => handle.remountUI(),
+        shutdown: () => handle.shutdown()
+      };
+      chrome.runtime.onMessage.addListener((msg) => {
+        const m = msg;
+        if (!m || typeof m.type !== "string") return;
+        const wp = window.__WATCH_PARTY__;
+        if (!wp) return;
+        if (m.type === "wp-deactivate") wp.teardown();
+        else if (m.type === "wp-hard-disconnect") wp.shutdown();
+        else if (m.type === "wp-remount") wp.remount();
+      });
     }
   }
 })();

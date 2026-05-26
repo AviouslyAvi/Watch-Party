@@ -1,18 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Watch-Party",
-  "version": "0.4.1",
-  "description": "Teleparty-style synchronized watch party for any site with a video player.",
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "all_frames": true,
-      "match_about_blank": true,
-      "run_at": "document_idle",
-      "js": ["content.js"]
-    }
-  ],
+  "version": "0.5.0",
+  "description": "Teleparty-style synchronized watch party for any site with a video player. Click the toolbar icon to turn it on for a tab.",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
-    "default_title": "Watch-Party"
-  }
+    "default_title": "Watch-Party (off — click to turn on)"
+  },
+  "permissions": [
+    "scripting",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "alarms"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
 }
