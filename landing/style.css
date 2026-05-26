@@ -158,6 +158,108 @@ input[type="url"]:focus {
   color: var(--muted);
 }
 
+.install-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0 4px;
+}
+
+@media (max-width: 520px) {
+  .install-options { grid-template-columns: 1fr; }
+}
+
+.install-option {
+  background: #0e0e11;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+}
+
+.install-option h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.install-option .hint {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.install-option p:last-child { margin-bottom: 0; }
+
+.install-option .btn {
+  width: 100%;
+  text-align: center;
+}
+
+.extension-instructions-lead {
+  margin-top: 18px;
+  margin-bottom: 4px;
+}
+
+.extension-instructions-lead strong { color: var(--fg); }
+
+.install-steps {
+  margin: 12px 0 4px;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.install-steps li { margin-bottom: 6px; }
+.install-steps .hint { font-size: 12px; }
+
+.install-steps code,
+.troubleshoot code {
+  background: #0e0e11;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.troubleshoot {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #0e0e11;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.troubleshoot summary {
+  cursor: pointer;
+  color: var(--fg);
+  font-weight: 500;
+  list-style: none;
+}
+
+.troubleshoot summary::-webkit-details-marker { display: none; }
+
+.troubleshoot summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.troubleshoot[open] summary::before { transform: rotate(90deg); }
+
+.troubleshoot ul {
+  margin: 10px 0 2px;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.troubleshoot li { margin-bottom: 6px; }
+.troubleshoot strong { color: var(--fg); }
+
 footer {
   text-align: center;
   color: var(--muted);

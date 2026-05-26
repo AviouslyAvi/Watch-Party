@@ -120,6 +120,10 @@ jobs:
         if: steps.gate.outputs.exists == 'false'
         run: WS_URL="$PROD_WS_URL" npm run build:ext
 
+      - name: Build userscript with prod WS_URL
+        if: steps.gate.outputs.exists == 'false'
+        run: WS_URL="$PROD_WS_URL" npm run build:user
+
       - name: Sync extension-build/
         if: steps.gate.outputs.exists == 'false'
         run: |
@@ -150,5 +154,6 @@ jobs:
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" \
             "watch-party-${{ steps.ver.outputs.version }}.zip" \
+            "dist/avious-party.user.js" \
             --title "Watch-Party ${{ steps.ver.outputs.tag }}" \
             --generate-notes

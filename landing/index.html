@@ -27,16 +27,37 @@
   </section>
 
   <section class="step">
-    <h2><span class="num">1</span> Install the Chrome extension</h2>
-    <p>Download the latest build, unzip it, and load it as an unpacked extension.</p>
-    <p><a class="btn primary" href="https://github.com/AviouslyAvi/Watch-Party/releases/latest" target="_blank" rel="noopener">Download latest release</a></p>
-    <ol class="hint">
-      <li>Unzip the downloaded file.</li>
-      <li>Open <code>chrome://extensions</code> in Chrome.</li>
-      <li>Toggle <strong>Developer mode</strong> on (top right).</li>
-      <li>Click <strong>Load unpacked</strong> and pick the unzipped folder.</li>
-      <li>Pin the extension from the puzzle-piece menu.</li>
+    <h2><span class="num">1</span> Install Watch-Party</h2>
+    <p>Two ways. Pick whichever fits your setup.</p>
+    <div class="install-options">
+      <div class="install-option">
+        <h3>Chrome extension</h3>
+        <p class="hint">Recommended. Two minutes. Works in Chrome, Edge, Brave, Arc.</p>
+        <p><a class="btn primary" href="https://github.com/AviouslyAvi/Watch-Party/releases/latest" target="_blank" rel="noopener">Download extension (zip)</a></p>
+      </div>
+      <div class="install-option">
+        <h3>Userscript</h3>
+        <p class="hint">One click if you already have Tampermonkey or Violentmonkey. Auto-updates on every release.</p>
+        <p><a class="btn" href="https://github.com/AviouslyAvi/Watch-Party/releases/latest/download/avious-party.user.js" target="_blank" rel="noopener">Install userscript</a></p>
+      </div>
+    </div>
+    <p class="hint extension-instructions-lead"><strong>Extension steps</strong> (skip if you used the userscript):</p>
+    <ol class="install-steps">
+      <li><strong>Unzip</strong> the downloaded file. Remember where you put the unzipped folder.</li>
+      <li>Open <code>chrome://extensions</code> in Chrome. <span class="hint">(Copy-paste it — Chrome won't let links open this page.)</span></li>
+      <li>Flip on <strong>Developer mode</strong> — the toggle is in the <em>top-right corner</em> of the page.</li>
+      <li>Click <strong>Load unpacked</strong> (top-left, appears after Developer mode is on) and pick the unzipped folder.</li>
+      <li>Click the puzzle-piece <span aria-hidden="true">🧩</span> in your Chrome toolbar and pin <strong>Watch-Party</strong> so the icon is always visible.</li>
     </ol>
+    <details class="troubleshoot">
+      <summary>Trouble installing?</summary>
+      <ul>
+        <li><strong>"Manifest file is missing or unreadable":</strong> you picked the zip or its parent folder. Pick the <em>unzipped</em> folder that directly contains <code>manifest.json</code>.</li>
+        <li><strong>No "Load unpacked" button:</strong> Developer mode isn't on yet. Toggle is upper-right of the extensions page.</li>
+        <li><strong>Chrome reopens and the extension is gone:</strong> Chrome occasionally disables unpacked extensions after a restart — re-enable it from <code>chrome://extensions</code>.</li>
+        <li><strong>Edge / Brave / Arc:</strong> same steps, same page (<code>edge://extensions</code>, <code>brave://extensions</code>, etc.). Firefox is not yet supported.</li>
+      </ul>
+    </details>
   </section>
 
   <section class="step">
@@ -52,7 +73,12 @@
 
   <section class="step">
     <h2><span class="num">3</span> Joining someone else's party?</h2>
-    <p>Make sure the extension is installed, then just open the link they sent you. The panel activates automatically — no extra step.</p>
+    <ol class="install-steps">
+      <li>Install the extension (step 1) if you haven't already.</li>
+      <li>Open the link the host sent you.</li>
+      <li><strong>Click the Watch-Party icon in your toolbar</strong> to activate it on that tab. You'll see the chat panel slide in.</li>
+    </ol>
+    <p class="hint">The extension stays dormant until you click the icon — that way it never touches sites you're not actively watching on.</p>
   </section>
 
   <footer>

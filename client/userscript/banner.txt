@@ -6,4 +6,8 @@
 // @match        *://*/*
 // @run-at       document-idle
 // @grant        none
+// @updateURL    https://github.com/AviouslyAvi/Watch-Party/releases/latest/download/avious-party.user.js
+// @downloadURL  https://github.com/AviouslyAvi/Watch-Party/releases/latest/download/avious-party.user.js
+// @homepageURL  https://watch-party.pages.dev/
+// @supportURL   https://github.com/AviouslyAvi/Watch-Party/issues
 // ==/UserScript==
