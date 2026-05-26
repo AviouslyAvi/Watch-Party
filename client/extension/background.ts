@@ -42,6 +42,11 @@ type AnyChrome = {
         cb: (d: { tabId: number; frameId: number; url: string }) => void,
       ) => void;
     };
+    onReferenceFragmentUpdated: {
+      addListener: (
+        cb: (d: { tabId: number; frameId: number; url: string }) => void,
+      ) => void;
+    };
   };
   alarms: {
     create: (name: string, opts: { delayInMinutes: number }) => void;
@@ -66,6 +71,18 @@ function originOf(url: string): string {
     return new URL(url).origin;
   } catch {
     return "";
+  }
+}
+
+function hasPartyHash(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    const params = new URLSearchParams(u.hash.replace(/^#/, ""));
+    const party = params.get("party");
+    return !!party && party.length > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -142,7 +159,13 @@ chrome.action.onClicked.addListener(async (tab) => {
 chrome.webNavigation.onCommitted.addListener(async (d) => {
   if (d.frameId !== 0) return; // only top-frame nav decisions
   const act = await getActivation(d.tabId);
-  if (!act) return;
+  if (!act) {
+    // Auto-activate on invite-link landings. Hash carrying `party=<id>` is the
+    // explicit opt-in signal — the user clicked a watch-party link, so we boot
+    // the extension on this tab without making them click the toolbar icon.
+    if (hasPartyHash(d.url)) await activate(d.tabId, d.url);
+    return;
+  }
   const newOrigin = originOf(d.url);
   if (newOrigin === act.origin) {
     // Same origin: cancel any pending cross-domain teardown, re-inject UI.
@@ -157,6 +180,16 @@ chrome.webNavigation.onCommitted.addListener(async (d) => {
     chrome.alarms.create(CROSS_ALARM(d.tabId), { delayInMinutes: CROSS_DOMAIN_GRACE_MIN });
     await setIcon(d.tabId, false);
   }
+});
+
+// In-page hash change (e.g. SPA mutating location.hash, or the landing page
+// forwarding to a destination that already has `#party=` baked in) — same
+// invite-hash auto-activation rule, but onCommitted doesn't fire here.
+chrome.webNavigation.onReferenceFragmentUpdated.addListener(async (d) => {
+  if (d.frameId !== 0) return;
+  const act = await getActivation(d.tabId);
+  if (act) return; // already on; content script handles hash changes itself
+  if (hasPartyHash(d.url)) await activate(d.tabId, d.url);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
