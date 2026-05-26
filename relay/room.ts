@@ -7,14 +7,18 @@ type Conn = {
   pathname: string;
   ws: WebSocket;
   reactionStamps: number[];
+  lastRenameAt: number;
 };
 
 const REACTION_WINDOW_MS = 10_000;
 const REACTION_LIMIT = 5;
+const RENAME_COOLDOWN_MS = 5_000;
+const NAME_MAX = 32;
 
 export class Room {
   private conns = new Map<ClientId, Conn>();
   private adminId: ClientId | null = null;
+  private operators = new Set<ClientId>();
   private freeForAll = false;
   private lastState: SyncMsg | null = null;
   private passphrase: string | null = null;
@@ -50,7 +54,14 @@ export class Room {
           return;
         }
 
-        conn = { id, name: msg.name, pathname: msg.pathname, ws: server, reactionStamps: [] };
+        conn = {
+          id,
+          name: (msg.name ?? "").slice(0, NAME_MAX),
+          pathname: msg.pathname,
+          ws: server,
+          reactionStamps: [],
+          lastRenameAt: 0,
+        };
         this.conns.set(id, conn);
         if (!this.adminId) this.adminId = id;
         registered = true;
@@ -59,6 +70,7 @@ export class Room {
           type: "welcome",
           you: id,
           adminId: this.adminId,
+          operators: [...this.operators],
           freeForAll: this.freeForAll,
           participants: this.listParticipants(),
           lastState: this.lastState,
@@ -85,8 +97,7 @@ export class Room {
         case "pause":
         case "seek":
         case "state": {
-          const isAdmin = conn.id === this.adminId;
-          if (!isAdmin && !this.freeForAll) {
+          if (!this.canDrive(conn.id)) {
             this.sendRevert(conn);
             return;
           }
@@ -120,19 +131,52 @@ export class Room {
           this.broadcast({ type: "ffa", freeForAll: this.freeForAll }, null);
           return;
         }
+        case "rename": {
+          const now = Date.now();
+          if (now - conn.lastRenameAt < RENAME_COOLDOWN_MS) return;
+          const next = (msg.name ?? "").trim().slice(0, NAME_MAX);
+          if (!next || next === conn.name) return;
+          conn.name = next;
+          conn.lastRenameAt = now;
+          // Broadcast both the participants snapshot (so lists update) and a
+          // rename event (so clients can retroactively re-label chat history).
+          this.broadcast({ type: "rename", from: conn.id, name: next }, null);
+          this.broadcastParticipants();
+          return;
+        }
+        case "promote": {
+          if (conn.id !== this.adminId) return;
+          if (typeof msg.target !== "string") return;
+          if (msg.target === this.adminId) return;
+          if (!this.conns.has(msg.target)) return;
+          this.operators.add(msg.target);
+          this.broadcastParticipants();
+          return;
+        }
+        case "demote": {
+          if (conn.id !== this.adminId) return;
+          if (typeof msg.target !== "string") return;
+          if (!this.operators.delete(msg.target)) return;
+          this.broadcastParticipants();
+          return;
+        }
       }
     });
 
     const close = () => {
       if (conn) {
         this.conns.delete(conn.id);
+        this.operators.delete(conn.id);
         if (this.adminId === conn.id) {
           const next = this.conns.keys().next();
           this.adminId = next.done ? null : next.value;
+          // Fresh slate for the new admin — operators don't carry across admin transfer.
+          this.operators.clear();
         }
         if (this.conns.size === 0) {
           // Empty room → reset pinned passphrase so the next first-joiner can re-pin.
           this.passphrase = null;
+          this.operators.clear();
         }
         this.broadcastParticipants();
       }
@@ -143,11 +187,16 @@ export class Room {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  private canDrive(id: ClientId): boolean {
+    return id === this.adminId || this.operators.has(id) || this.freeForAll;
+  }
+
   private listParticipants(): Participant[] {
     return [...this.conns.values()].map((c) => ({
       id: c.id,
       name: c.name,
       isAdmin: c.id === this.adminId,
+      isOperator: this.operators.has(c.id),
     }));
   }
 
@@ -157,6 +206,7 @@ export class Room {
       type: "participants",
       participants: this.listParticipants(),
       adminId: this.adminId,
+      operators: [...this.operators],
     };
     this.broadcast(msg, null);
   }

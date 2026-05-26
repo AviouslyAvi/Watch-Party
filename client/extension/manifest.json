@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Watch-Party",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Teleparty-style synchronized watch party for any site with a video player. Click the toolbar icon to turn it on for a tab.",
   "background": {
     "service_worker": "background.js",

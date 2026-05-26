@@ -1,7 +1,8 @@
 import { createSyncClient, type VideoAdapter } from "../../shared/sync";
-import type { WireMsg, SyncMsg, Participant } from "../../shared/protocol";
+import type { WireMsg, Participant, ClientId } from "../../shared/protocol";
 import { IFRAME_TAG } from "./iframe-bridge";
 import { mountPanel } from "./ui/panel";
+import { hasOnboarded, resetOnboarded, runCoachmark } from "./ui/coachmark";
 
 declare const WS_URL: string;
 declare const VERSION: string;
@@ -25,6 +26,7 @@ export function bootTopFrame(): BootHandle {
 
   let you = "";
   let adminId = "";
+  let operators: ClientId[] = [];
   let freeForAll = false;
   let ws: WebSocket | null = null;
   let rejected = false;
@@ -33,6 +35,10 @@ export function bootTopFrame(): BootHandle {
 
   type PanelInstance = ReturnType<typeof mountPanel>;
   let panel: PanelInstance | null = null;
+
+  function canDrive(): boolean {
+    return you === adminId || operators.includes(you);
+  }
 
   const panelHooks = {
     onCopyLink: () => {
@@ -54,19 +60,35 @@ export function bootTopFrame(): BootHandle {
       send({ type: "ffa", freeForAll: next });
     },
     onSendChat: (text: string) => {
-      send({ type: "chat", from: you, name: me, text, ts: Date.now() });
-      panel?.appendChat(you, me, text);
+      const ts = Date.now();
+      send({ type: "chat", from: you, name: me, text, ts });
+      panel?.appendChat(you, me, text, ts);
     },
     onSubmitUsername: (name: string) => {
       me = name;
       localStorage.setItem("cp-name", name);
       connect();
     },
+    onRename: (name: string) => {
+      me = name;
+      localStorage.setItem("cp-name", name);
+      // Optimistic: update local DOM immediately, server broadcast will confirm.
+      panel?.applyRename(you, name);
+      send({ type: "rename", from: you, name });
+    },
     onReact: (emoji: import("../../shared/protocol").ReactionEmoji) => {
       send({ type: "reaction", from: you, name: me, emoji, ts: Date.now() });
     },
     onTyping: () => {
       send({ type: "typing", from: you, name: me, ts: Date.now() });
+    },
+    onPromote: (target: ClientId) => {
+      if (you !== adminId) return;
+      send({ type: "promote", target });
+    },
+    onDemote: (target: ClientId) => {
+      if (you !== adminId) return;
+      send({ type: "demote", target });
     },
     onSetKey: (key: string | null) => {
       passphrase = key;
@@ -80,6 +102,10 @@ export function bootTopFrame(): BootHandle {
       // Empty rooms reset their pin, so close + reconnect gives us a clean state if we were alone.
       if (ws) try { ws.close(); } catch {}
     },
+    onReplayOnboarding: () => {
+      resetOnboarded();
+      launchOnboarding();
+    },
   };
 
   function mountUI() {
@@ -92,11 +118,34 @@ export function bootTopFrame(): BootHandle {
 
   mountUI();
 
+  function launchOnboarding() {
+    if (!panel) return;
+    const a = panel.anchors;
+    runCoachmark([
+      { anchor: a.header, text: "Welcome to Watch-Party. Click the toolbar icon to turn it on for any tab — you're connected now.", placement: "left" },
+      { anchor: a.copy, text: "Share this link with friends to watch together. The room ID lives in the URL after #.", placement: "left" },
+      { anchor: a.nameForm, text: "Pick a display name to start chatting. You can change it later from the gear menu — old messages update too.", placement: "left" },
+      { anchor: a.reactions, text: "Tap to send a floating reaction. Limited to one every 2 seconds.", placement: "left" },
+      { anchor: a.layout, text: "Switch the chat between Overlay, Push (reflows the page), and Hidden.", placement: "bottom" },
+      { anchor: a.settings, text: "Colors, text size, accessibility (colorblind / high contrast), and tour replay live in settings.", placement: "bottom" },
+    ]);
+  }
+
+  // Fire onboarding on first open after first connection — wait for `welcome`
+  // so the gate is dismissed and the UI is fully populated.
+  let onboardingFired = false;
+  function maybeOnboard() {
+    if (onboardingFired) return;
+    if (hasOnboarded()) return;
+    onboardingFired = true;
+    setTimeout(launchOnboarding, 600);
+  }
+
   const video = makeTopFrameAdapter();
   const sync = createSyncClient({
     video,
     send: (m) => send(m),
-    isAdmin: () => you === adminId,
+    isAdmin: () => canDrive(),
     freeForAll: () => freeForAll,
   });
 
@@ -129,7 +178,7 @@ export function bootTopFrame(): BootHandle {
   if (me) connect();
 
   checkForUpdate().then((latest) => {
-    if (latest && latest !== `v${VERSION}` && latest !== VERSION) {
+    if (latest && gt(latest, VERSION)) {
       pendingUpdate = { tag: latest, href: RELEASES_URL };
       panel?.showUpdateBanner(latest, RELEASES_URL);
     }
@@ -140,20 +189,28 @@ export function bootTopFrame(): BootHandle {
       case "welcome":
         you = msg.you;
         adminId = msg.adminId;
+        operators = msg.operators;
         freeForAll = msg.freeForAll;
         participants = msg.participants;
         panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
-        if (you === adminId) {
+        if (canDrive()) {
           sync.startHeartbeat();
-          panel?.appendSystem("You are the admin.");
+          if (you === adminId) panel?.appendSystem("You are the admin. ⭐ to grant playback to others, 👑 stays with you.");
+          else panel?.appendSystem("You're an operator — you can drive playback.");
         }
         if (msg.lastState) sync.applyRemote(msg.lastState);
+        maybeOnboard();
         return;
       case "participants":
         adminId = msg.adminId;
+        operators = msg.operators;
         participants = msg.participants;
         panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
-        if (you === adminId) sync.startHeartbeat();
+        if (canDrive()) sync.startHeartbeat();
+        return;
+      case "rename":
+        panel?.applyRename(msg.from, msg.name);
+        if (msg.from !== you) panel?.appendSystem(`${msg.name} renamed.`);
         return;
       case "ffa":
         freeForAll = msg.freeForAll;
@@ -173,10 +230,10 @@ export function bootTopFrame(): BootHandle {
         return;
       case "revert":
         sync.revert(msg.at, msg.paused);
-        panel?.appendSystem("Only the admin can control playback.");
+        panel?.appendSystem("Only the admin or operators can control playback.");
         return;
       case "chat":
-        if (msg.from !== you) panel?.appendChat(msg.from, msg.name, msg.text);
+        if (msg.from !== you) panel?.appendChat(msg.from, msg.name, msg.text, msg.ts);
         return;
       case "reaction":
         panel?.showReaction(msg.from, msg.from === you ? "you" : msg.name, msg.emoji);
@@ -334,9 +391,13 @@ function randomToken(byteLen: number): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// Bumped cache key on the v0.5→v0.6 upgrade to flush bad cached "v0.4.1"
+// entries from the pre-semver check.
+const UPDATE_CACHE_KEY = "cp-update-check-v2";
+
 async function checkForUpdate(): Promise<string | null> {
   try {
-    const cached = localStorage.getItem("cp-update-check");
+    const cached = localStorage.getItem(UPDATE_CACHE_KEY);
     if (cached) {
       const { tag, ts } = JSON.parse(cached) as { tag: string; ts: number };
       if (Date.now() - ts < 6 * 60 * 60 * 1000) return tag;
@@ -345,9 +406,27 @@ async function checkForUpdate(): Promise<string | null> {
     if (!res.ok) return null;
     const json = (await res.json()) as { tag_name?: string };
     const tag = json.tag_name ?? null;
-    if (tag) localStorage.setItem("cp-update-check", JSON.stringify({ tag, ts: Date.now() }));
+    if (tag) localStorage.setItem(UPDATE_CACHE_KEY, JSON.stringify({ tag, ts: Date.now() }));
     return tag;
   } catch {
     return null;
   }
+}
+
+// Compare semver-ish versions (e.g. "v0.6.0" vs "0.5.0"). Returns true iff a > b.
+function gt(a: string, b: string): boolean {
+  const parse = (s: string) =>
+    s.replace(/^v/, "").split(".").map((n) => {
+      const num = parseInt(n, 10);
+      return Number.isFinite(num) ? num : 0;
+    });
+  const pa = parse(a);
+  const pb = parse(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const ai = pa[i] ?? 0;
+    const bi = pb[i] ?? 0;
+    if (ai !== bi) return ai > bi;
+  }
+  return false;
 }

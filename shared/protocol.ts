@@ -38,18 +38,27 @@ export type TypingMsg = {
   ts: number;
 };
 
+export type RenameMsg = {
+  type: "rename";
+  from: ClientId;
+  name: string;
+};
+
+export type PromoteMsg = { type: "promote"; target: ClientId };
+export type DemoteMsg = { type: "demote"; target: ClientId };
+
 export type PresenceMsg =
   | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
-  | { type: "welcome"; you: ClientId; adminId: ClientId; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
-  | { type: "participants"; participants: Participant[]; adminId: ClientId }
+  | { type: "welcome"; you: ClientId; adminId: ClientId; operators: ClientId[]; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
+  | { type: "participants"; participants: Participant[]; adminId: ClientId; operators: ClientId[] }
   | { type: "ffa"; freeForAll: boolean }
   | { type: "revert"; at: number; paused: boolean }
   | { type: "pathDiff"; theirPath: string; yourPath: string }
-  | { type: "rejected"; reason: "passphrase" };
+  | { type: "rejected"; reason: "passphrase" | "rate-limit" };
 
-export type Participant = { id: ClientId; name: string; isAdmin: boolean };
+export type Participant = { id: ClientId; name: string; isAdmin: boolean; isOperator: boolean };
 
-export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | TypingMsg | PresenceMsg;
+export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | TypingMsg | RenameMsg | PromoteMsg | DemoteMsg | PresenceMsg;
 
 export function isSyncMsg(m: WireMsg): m is SyncMsg {
   return m.type === "play" || m.type === "pause" || m.type === "seek" || m.type === "state";
