@@ -3,6 +3,7 @@ import type { WireMsg, Participant, ClientId } from "../../shared/protocol";
 import { IFRAME_TAG } from "./iframe-bridge";
 import { mountPanel } from "./ui/panel";
 import { hasOnboarded, resetOnboarded, runCoachmark } from "./ui/coachmark";
+import { setHostDisabled } from "./ui/activator";
 
 declare const WS_URL: string;
 declare const VERSION: string;
@@ -17,7 +18,7 @@ export interface BootHandle {
   shutdown: () => void;
 }
 
-export function bootTopFrame(): BootHandle {
+export function bootTopFrame(onDeactivated?: () => void): BootHandle {
   let me = loadStoredName() ?? "";
   const initial = ensureRoom();
   const roomId = initial.roomId;
@@ -105,6 +106,18 @@ export function bootTopFrame(): BootHandle {
     onReplayOnboarding: () => {
       resetOnboarded();
       launchOnboarding();
+    },
+    onDeactivate: () => {
+      // Persist the off state for this host, tear everything down, hand control
+      // back to the activator. Invite-link hashes will override on next nav
+      // (see index.ts — auto-activates regardless of stored disabled flag).
+      setHostDisabled(true);
+      rejected = true;
+      panel?.destroy();
+      panel = null;
+      if (ws) try { ws.close(); } catch {}
+      ws = null;
+      onDeactivated?.();
     },
   };
 

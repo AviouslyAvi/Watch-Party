@@ -24,6 +24,7 @@ export interface PanelHooks {
   onPromote: (target: ClientId) => void;
   onDemote: (target: ClientId) => void;
   onReplayOnboarding: () => void;
+  onDeactivate: () => void;
 }
 
 const REACTION_FLOAT_MAX = 5;
@@ -335,7 +336,9 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
         </section>
         <section>
           <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Behavior</div>
-          <button id="cp-replay-tour" style="width:100%;padding:5px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;">Replay onboarding tour</button>
+          <button id="cp-replay-tour" style="width:100%;padding:5px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;margin-bottom:6px;">Replay onboarding tour</button>
+          <button id="cp-deactivate" title="Closes the socket, tears down the chat, and remembers this site as off. Click the 🎬 button in the corner to turn it back on." style="width:100%;padding:5px;background:#3a1414;color:#fca5a5;border:1px solid #5c1f1f;border-radius:4px;cursor:pointer;font:inherit;">Turn off Watch-Party here</button>
+          <div style="font-size:11px;color:#777;margin-top:4px;line-height:1.4;">Dismisses the chat for this site. The 🎬 button in the corner reactivates. Invite links auto-reactivate.</div>
         </section>
         <section style="font-size:11px;color:#777;border-top:1px solid #2a2a2a;padding-top:8px;">
           Watch-Party. Room data lives in memory only — close the tab to leave.
@@ -385,6 +388,9 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     });
     ($("#cp-replay-tour") as HTMLButtonElement).addEventListener("click", () => {
       hooks.onReplayOnboarding();
+    });
+    ($("#cp-deactivate") as HTMLButtonElement).addEventListener("click", () => {
+      hooks.onDeactivate();
     });
     const renameForm = $("#cp-rename-form") as HTMLFormElement;
     const renameInput = $("#cp-rename-input") as HTMLInputElement;
