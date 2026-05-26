@@ -1100,7 +1100,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.7.0")) {
+      if (latest && gt(latest, "0.8.0")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
@@ -1188,6 +1188,13 @@
         } catch {
         }
         ws = null;
+      },
+      copyInviteLink() {
+        const url = currentRoomUrl();
+        navigator.clipboard.writeText(url).then(
+          () => panel?.appendSystem("Room link copied \u2014 share it with your friends."),
+          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
+        );
       }
     };
   }
