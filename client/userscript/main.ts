@@ -16,6 +16,8 @@ export interface BootHandle {
   teardownUI: () => void;
   remountUI: () => void;
   shutdown: () => void;
+  /** Copy the current room invite link to clipboard. Used by site-adapter buttons. */
+  copyInviteLink: () => void;
 }
 
 export function bootTopFrame(onDeactivated?: () => void): BootHandle {
@@ -277,6 +279,13 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
       panel = null;
       if (ws) try { ws.close(); } catch {}
       ws = null;
+    },
+    copyInviteLink() {
+      const url = currentRoomUrl();
+      navigator.clipboard.writeText(url).then(
+        () => panel?.appendSystem("Room link copied — share it with your friends."),
+        () => panel?.appendSystem("Copy failed — link: " + url),
+      );
     },
   };
 }
