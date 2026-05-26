@@ -1,6 +1,6 @@
 import { createSyncClient, type VideoAdapter } from "../../shared/sync";
-import type { WireMsg, SyncMsg } from "../../shared/protocol";
-import { runIframeBridge, IFRAME_TAG } from "./iframe-bridge";
+import type { WireMsg, SyncMsg, Participant } from "../../shared/protocol";
+import { IFRAME_TAG } from "./iframe-bridge";
 import { mountPanel } from "./ui/panel";
 
 declare const WS_URL: string;
@@ -8,19 +8,15 @@ declare const VERSION: string;
 declare const RELEASES_API: string;
 declare const RELEASES_URL: string;
 
-const isTopFrame = window === window.top;
 const LANDING_ORIGIN = "https://watch-party.pages.dev";
 
-if (!isTopFrame) {
-  runIframeBridge();
-} else {
-  if (location.hostname === "watch-party.pages.dev") {
-    document.documentElement.dataset.watchPartyInstalled = "1";
-  }
-  bootTopFrame();
+export interface BootHandle {
+  teardownUI: () => void;
+  remountUI: () => void;
+  shutdown: () => void;
 }
 
-function bootTopFrame() {
+export function bootTopFrame(): BootHandle {
   let me = loadStoredName() ?? "";
   const initial = ensureRoom();
   const roomId = initial.roomId;
@@ -32,45 +28,50 @@ function bootTopFrame() {
   let freeForAll = false;
   let ws: WebSocket | null = null;
   let rejected = false;
+  let participants: Participant[] = [];
+  let pendingUpdate: { tag: string; href: string } | null = null;
 
-  const panel = mountPanel({
+  type PanelInstance = ReturnType<typeof mountPanel>;
+  let panel: PanelInstance | null = null;
+
+  const panelHooks = {
     onCopyLink: () => {
       const url = currentRoomUrl();
       navigator.clipboard.writeText(url).then(
-        () => panel.appendSystem("Room link copied."),
-        () => panel.appendSystem("Copy failed — link: " + url),
+        () => panel?.appendSystem("Room link copied."),
+        () => panel?.appendSystem("Copy failed — link: " + url),
       );
     },
     onShareForNonInstallers: () => {
       const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
       navigator.clipboard.writeText(url).then(
-        () => panel.appendSystem("Onboarding link copied — friends without the extension will see install steps."),
-        () => panel.appendSystem("Copy failed — link: " + url),
+        () => panel?.appendSystem("Onboarding link copied — friends without the extension will see install steps."),
+        () => panel?.appendSystem("Copy failed — link: " + url),
       );
     },
-    onToggleFFA: (next) => {
+    onToggleFFA: (next: boolean) => {
       freeForAll = next;
       send({ type: "ffa", freeForAll: next });
     },
-    onSendChat: (text) => {
+    onSendChat: (text: string) => {
       send({ type: "chat", from: you, name: me, text, ts: Date.now() });
-      panel.appendChat(you, me, text);
+      panel?.appendChat(you, me, text);
     },
-    onSubmitUsername: (name) => {
+    onSubmitUsername: (name: string) => {
       me = name;
       localStorage.setItem("cp-name", name);
       connect();
     },
-    onReact: (emoji) => {
+    onReact: (emoji: import("../../shared/protocol").ReactionEmoji) => {
       send({ type: "reaction", from: you, name: me, emoji, ts: Date.now() });
     },
     onTyping: () => {
       send({ type: "typing", from: you, name: me, ts: Date.now() });
     },
-    onSetKey: (key) => {
+    onSetKey: (key: string | null) => {
       passphrase = key;
       writeRoomFragment(roomId, passphrase);
-      panel.appendSystem(
+      panel?.appendSystem(
         key
           ? "🔒 Room key set. Share the new link — friends will need to reconnect with it."
           : "🔓 Room key cleared.",
@@ -79,7 +80,17 @@ function bootTopFrame() {
       // Empty rooms reset their pin, so close + reconnect gives us a clean state if we were alone.
       if (ws) try { ws.close(); } catch {}
     },
-  }, me || undefined);
+  };
+
+  function mountUI() {
+    panel = mountPanel(panelHooks, me || undefined);
+    if (you) {
+      panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+    }
+    if (pendingUpdate) panel.showUpdateBanner(pendingUpdate.tag, pendingUpdate.href);
+  }
+
+  mountUI();
 
   const video = makeTopFrameAdapter();
   const sync = createSyncClient({
@@ -111,7 +122,7 @@ function bootTopFrame() {
     });
     ws.addEventListener("close", () => {
       if (rejected) return;
-      panel.appendSystem("Disconnected. Reconnecting in 2s…");
+      panel?.appendSystem("Disconnected. Reconnecting in 2s…");
       setTimeout(connect, 2000);
     });
   }
@@ -119,7 +130,8 @@ function bootTopFrame() {
 
   checkForUpdate().then((latest) => {
     if (latest && latest !== `v${VERSION}` && latest !== VERSION) {
-      panel.showUpdateBanner(latest, RELEASES_URL);
+      pendingUpdate = { tag: latest, href: RELEASES_URL };
+      panel?.showUpdateBanner(latest, RELEASES_URL);
     }
   });
 
@@ -129,29 +141,31 @@ function bootTopFrame() {
         you = msg.you;
         adminId = msg.adminId;
         freeForAll = msg.freeForAll;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+        participants = msg.participants;
+        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) {
           sync.startHeartbeat();
-          panel.appendSystem("You are the admin.");
+          panel?.appendSystem("You are the admin.");
         }
         if (msg.lastState) sync.applyRemote(msg.lastState);
         return;
       case "participants":
         adminId = msg.adminId;
-        panel.setState({ you, adminId, freeForAll, participants: msg.participants, roomUrl: currentRoomUrl(), passphrase });
+        participants = msg.participants;
+        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
         if (you === adminId) sync.startHeartbeat();
         return;
       case "ffa":
         freeForAll = msg.freeForAll;
-        panel.appendSystem(`Free-for-all: ${freeForAll ? "ON" : "OFF"}`);
+        panel?.appendSystem(`Free-for-all: ${freeForAll ? "ON" : "OFF"}`);
         return;
       case "pathDiff":
-        panel.appendSystem(`⚠️ Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
+        panel?.appendSystem(`⚠️ Different content. You: ${msg.yourPath} / Them: ${msg.theirPath}`);
         return;
       case "rejected":
         rejected = true;
         if (ws) try { ws.close(); } catch {}
-        panel.appendSystem(
+        panel?.appendSystem(
           msg.reason === "passphrase"
             ? "❌ Wrong room key. Get the full share link from whoever set up the room."
             : "❌ Connection rejected.",
@@ -159,16 +173,16 @@ function bootTopFrame() {
         return;
       case "revert":
         sync.revert(msg.at, msg.paused);
-        panel.appendSystem("Only the admin can control playback.");
+        panel?.appendSystem("Only the admin can control playback.");
         return;
       case "chat":
-        if (msg.from !== you) panel.appendChat(msg.from, msg.name, msg.text);
+        if (msg.from !== you) panel?.appendChat(msg.from, msg.name, msg.text);
         return;
       case "reaction":
-        panel.showReaction(msg.from, msg.from === you ? "you" : msg.name, msg.emoji);
+        panel?.showReaction(msg.from, msg.from === you ? "you" : msg.name, msg.emoji);
         return;
       case "typing":
-        if (msg.from !== you) panel.showTyping(msg.from, msg.name);
+        if (msg.from !== you) panel?.showTyping(msg.from, msg.name);
         return;
       case "play":
       case "pause":
@@ -178,6 +192,23 @@ function bootTopFrame() {
         return;
     }
   }
+
+  return {
+    teardownUI() {
+      panel?.destroy();
+      panel = null;
+    },
+    remountUI() {
+      if (!panel) mountUI();
+    },
+    shutdown() {
+      rejected = true;
+      panel?.destroy();
+      panel = null;
+      if (ws) try { ws.close(); } catch {}
+      ws = null;
+    },
+  };
 }
 
 function makeTopFrameAdapter(): VideoAdapter {

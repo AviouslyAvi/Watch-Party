@@ -10,37 +10,42 @@ const RELEASES_URL = process.env.RELEASES_URL || "https://github.com/AviouslyAvi
 
 mkdirSync("dist", { recursive: true });
 
-async function bundle() {
+const defines = {
+  WS_URL: JSON.stringify(WS_URL),
+  VERSION: JSON.stringify(VERSION),
+  RELEASES_API: JSON.stringify(RELEASES_API),
+  RELEASES_URL: JSON.stringify(RELEASES_URL),
+};
+
+async function bundleFile(entryPoint) {
   const result = await build({
-    entryPoints: ["client/userscript/main.ts"],
+    entryPoints: [entryPoint],
     bundle: true,
     format: "iife",
     target: "es2020",
-    define: {
-      WS_URL: JSON.stringify(WS_URL),
-      VERSION: JSON.stringify(VERSION),
-      RELEASES_API: JSON.stringify(RELEASES_API),
-      RELEASES_URL: JSON.stringify(RELEASES_URL),
-    },
+    define: defines,
     write: false,
     legalComments: "none",
   });
   return result.outputFiles[0].text;
 }
 
-function buildUserscript(js) {
+async function buildUserscript() {
+  const js = await bundleFile("client/userscript/index.ts");
   const banner = readFileSync("client/userscript/banner.txt", "utf8");
   writeFileSync("dist/avious-party.user.js", banner + "\n" + js);
   console.log(`✓ dist/avious-party.user.js (WS_URL=${WS_URL})`);
 }
 
-function buildExtension(js) {
+async function buildExtension() {
   mkdirSync("dist/extension", { recursive: true });
-  writeFileSync("dist/extension/content.js", js);
+  const content = await bundleFile("client/extension/content.ts");
+  const background = await bundleFile("client/extension/background.ts");
+  writeFileSync("dist/extension/content.js", content);
+  writeFileSync("dist/extension/background.js", background);
   copyFileSync("client/extension/manifest.json", "dist/extension/manifest.json");
   console.log(`✓ dist/extension/ (WS_URL=${WS_URL})`);
 }
 
-const js = await bundle();
-if (target === "user" || target === "all") buildUserscript(js);
-if (target === "ext" || target === "all") buildExtension(js);
+if (target === "user" || target === "all") await buildUserscript();
+if (target === "ext" || target === "all") await buildExtension();

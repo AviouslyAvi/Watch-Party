@@ -11,8 +11,12 @@ Two delivery vehicles for the same `shared/` engine. v1 = Tampermonkey userscrip
 - `banner.txt` — Tampermonkey `// ==UserScript==` header. `build.mjs` prepends it.
 
 ### v2: `extension/`
-- `manifest.json` — MV3 manifest. `all_frames: true`, `match_about_blank: true` so the content script reaches cross-origin player iframes without Tampermonkey's per-user iframe-injection setting.
-- `content.ts` — same role as the userscript's `main.ts` + `iframe-bridge.ts`, packaged for the extension runtime.
+Dormant-by-default. Toolbar click activates per-tab; no declarative `content_scripts`.
+- `manifest.json` — MV3. Background SW + action button + `<all_urls>` host permission. No `content_scripts` block.
+- `background.ts` — service worker. Owns per-tab activation in `chrome.storage.session`, programmatic injection via `chrome.scripting.executeScript`, re-injection on `webNavigation.onCommitted`, grace-period teardowns via `chrome.alarms`.
+- `content.ts` — runs in iframes (always) and top frames (only when SW injects). `window.__WATCH_PARTY__` sentinel so re-inject after soft teardown remounts the existing instance.
+
+See `extension/README.md` for the full activation table.
 
 ## Skip
 

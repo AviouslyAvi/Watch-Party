@@ -301,7 +301,13 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     banner.style.display = "block";
   }
 
-  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping };
+  function destroy() {
+    for (const t of typers.values()) clearTimeout(t.timeoutId);
+    typers.clear();
+    host.remove();
+  }
+
+  return { setState, appendChat, appendSystem, revealChat, showUpdateBanner, showReaction, showTyping, destroy };
 }
 
 function escapeHtml(s: string) {
