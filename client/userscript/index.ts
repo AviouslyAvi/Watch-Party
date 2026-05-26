@@ -7,12 +7,20 @@ import { cinebyAdapter } from "./site-adapters/cineby";
 
 const SITE_ADAPTERS: SiteAdapter[] = [youtubeAdapter, cinebyAdapter];
 
+declare const VERSION: string;
+
 if (window !== window.top) {
   runIframeBridge();
 } else {
   if (location.hostname === "watch-party.pages.dev") {
     document.documentElement.dataset.watchPartyInstalled = "1";
   }
+  // Loud-and-proud boot log so users can verify the script is actually running
+  // and what version they're on. Filter the console with "Watch-Party" to find it.
+  console.log(
+    `%c🎬 Watch-Party v${VERSION} loaded`,
+    "background:#f97316;color:#fff;font-weight:600;padding:2px 8px;border-radius:4px;",
+  );
   startLifecycle();
 }
 

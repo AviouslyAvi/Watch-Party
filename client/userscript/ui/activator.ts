@@ -31,32 +31,42 @@ export function mountActivator(onActivate: () => void): ActivatorHandle {
   btn.id = "cp-activator";
   btn.title = "Turn Watch-Party on for this site (Alt+Shift+W)";
   btn.setAttribute("aria-label", "Activate Watch-Party");
-  btn.textContent = "🎬";
+  btn.innerHTML = `<span aria-hidden="true" style="font-size:18px;line-height:1;">🎬</span><span style="font:600 13px/1 system-ui, sans-serif;">Watch-Party</span>`;
   btn.style.cssText = `
     position: fixed;
-    right: 12px;
-    bottom: 12px;
-    width: 40px;
-    height: 40px;
-    border-radius: 20px;
-    background: #141416;
-    color: #f97316;
-    border: 1px solid #333;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+    right: 16px;
+    bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 0 4px rgba(249,115,22,0.18);
     cursor: pointer;
-    font-size: 18px;
     line-height: 1;
-    padding: 0;
     z-index: 2147483647;
-    opacity: 0.78;
-    transition: opacity 150ms ease, transform 150ms ease;
+    transition: transform 150ms ease, box-shadow 200ms ease;
+    animation: cp-activator-pulse 2.6s ease-in-out infinite;
   `;
+  // Inject the pulse keyframes once.
+  if (!document.getElementById("cp-activator-keyframes")) {
+    const styleEl = document.createElement("style");
+    styleEl.id = "cp-activator-keyframes";
+    styleEl.textContent = `
+      @keyframes cp-activator-pulse {
+        0%, 100% { box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 0 4px rgba(249,115,22,0.18); }
+        50%      { box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 0 10px rgba(249,115,22,0.06); }
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
   btn.addEventListener("mouseenter", () => {
-    btn.style.opacity = "1";
-    btn.style.transform = "scale(1.06)";
+    btn.style.transform = "scale(1.04)";
   });
   btn.addEventListener("mouseleave", () => {
-    btn.style.opacity = "0.78";
     btn.style.transform = "scale(1)";
   });
   btn.addEventListener("click", () => {
