@@ -274,6 +274,14 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     }
   });
 
+  // Participant state — declared early so applyTheme()'s rerenderPeopleList()
+  // call doesn't hit a TDZ on currentYou during the initial-theme pass at boot.
+  // (Real bug — surfaced on cineby.sc invite-hash auto-activation, v0.8.1.)
+  let currentParticipants: Participant[] = [];
+  let currentYou = "";
+  let currentAdminId = "";
+  const nameMap = new Map<ClientId, string>();
+
   // ─────────────────────────── Settings drawer ───────────────────────────────
   function applyTheme() {
     host.style.setProperty("--cp-bg", settings.bgColor);
@@ -586,10 +594,8 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
 
   // ─────────────────────────── Participants ──────────────────────────────────
-  let currentParticipants: Participant[] = [];
-  let currentYou = "";
-  let currentAdminId = "";
-  const nameMap = new Map<ClientId, string>();
+  // (let currentParticipants/currentYou/currentAdminId + nameMap declared
+  //  earlier — see comment by the Settings drawer block. Don't redeclare.)
 
   function rerenderPeopleList() {
     const peopleEl = $("#cp-people") as HTMLDivElement;
