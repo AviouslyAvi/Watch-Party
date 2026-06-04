@@ -368,6 +368,10 @@
         preFullscreenMode = null;
       }
     });
+    let currentParticipants = [];
+    let currentYou = "";
+    let currentAdminId = "";
+    const nameMap = /* @__PURE__ */ new Map();
     function applyTheme() {
       host.style.setProperty("--cp-bg", settings.bgColor);
       host.style.setProperty("--cp-text", settings.textColor);
@@ -657,10 +661,6 @@
       hooks.onSetKey(null);
       keyForm.style.display = "none";
     });
-    let currentParticipants = [];
-    let currentYou = "";
-    let currentAdminId = "";
-    const nameMap = /* @__PURE__ */ new Map();
     function rerenderPeopleList() {
       const peopleEl = $("#cp-people");
       const youIsAdmin = currentYou === currentAdminId;
@@ -1100,7 +1100,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.1")) {
+      if (latest && gt(latest, "0.8.2")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
