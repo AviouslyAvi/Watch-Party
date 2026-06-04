@@ -42,6 +42,16 @@ The legacy per-room `CLAUDE.md` files are still present for backward compatibili
 - Never bundle the production relay URL into source. Read `WS_URL` from build env; fall back to `ws://localhost:8787` for dev.
 - Don't commit `dist/`, `.dev.vars`, or any Cloudflare secrets.
 
+### Versioning — patch bumps only
+
+**Default: every release is a patch bump.** Current line is `0.8.x`. Next change ships as `v0.8.3`, then `v0.8.4`, `v0.8.5`, and so on. This is true for fixes AND for small additive features.
+
+- Bump the **minor** (e.g. → `v0.9.0`) **only** when the user explicitly says so ("call this a minor", "ship v0.9", etc).
+- Bump the **major** (→ `v1.0.0`) **only** when the user explicitly says so.
+- **Never rewind** to a lower version — Tampermonkey's semver compare treats lower as a downgrade and refuses to update.
+- The three files to bump in lockstep: `client/extension/manifest.json` `version`, `client/userscript/banner.txt` `@version`, and the tag CI cuts (which is derived from the manifest, so just keep those two in sync).
+- The earlier jumps to `v0.7.0` and `v0.8.0` were mistakes. Don't repeat them.
+
 ## Commands
 
 ```bash
