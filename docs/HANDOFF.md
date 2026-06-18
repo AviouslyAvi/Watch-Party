@@ -1,7 +1,9 @@
 # Watch-Party — Handoff
 
-Last updated: 2026-05-26
-Milestone: **v0.8.1 live on main — site-adapter buttons (YouTube, Cineby) + unmissable activator pill. Next bump is a patch (v0.8.2), not a minor.**
+Last updated: 2026-06-18
+Milestone: **v0.8.3 staged on branch — Firefox/Zen build target + real extension icons. v0.8.2 (TDZ fix) is the latest release on main; v0.8.3 not yet merged/released. Next bump after this is a patch (v0.8.4), not a minor.**
+
+> **2026-06-18 session (this branch, not yet merged):** Added Firefox/Zen support and extension icons, shipping as **v0.8.3**. See "What this session shipped" immediately below and the decision record [docs/decisions/2026-06-18-firefox-zen-support-and-icons.md](decisions/2026-06-18-firefox-zen-support-and-icons.md). Also fixed a latent bug: `extension-build/` was missing `background.js` since v0.5.0 (CI never synced it), making the loadable-unpacked Chrome dir non-loadable — now fixed and CI syncs the full set.
 
 ## Versioning convention (read this first)
 
@@ -34,6 +36,14 @@ The recent jumps to `v0.7.0` (full off-toggle) and `v0.8.0` (site adapters) were
 | Source repo | `https://github.com/AviouslyAvi/Watch-Party` |
 
 ## What this session shipped
+
+### v0.8.3 — Firefox/Zen support + icons (this branch, not yet merged)
+
+Shipped as a patch (small additive feature). Lockstep version bump applied to `client/extension/manifest.json` and `client/userscript/banner.txt` → `0.8.3`.
+
+- **Firefox/Zen build target.** New `TARGET=firefox` / `npm run build:firefox` in [build.mjs](build.mjs) emits `dist/extension-firefox/` from the **same** `background.ts` / `content.ts`. Two build-time deltas only: (1) manifest transform — `background.service_worker` → `background.scripts`, plus `browser_specific_settings.gecko` (id `watch-party@avious.party`, `strict_min_version: 115.0` — the floor for `storage.session`); (2) a one-line esbuild banner `var chrome=globalThis.browser||globalThis.chrome;` applied only to the Gecko bundles, aliasing the `chrome` namespace to Gecko's promise-based `browser`. The alarms-based teardown design already assumed an unloadable background context, so it ports to an event page unchanged. `firefox` is included in the default `all` target; CI's `build:ext`/`build:user` calls are untouched. Decision record: [docs/decisions/2026-06-18-firefox-zen-support-and-icons.md](decisions/2026-06-18-firefox-zen-support-and-icons.md).
+- **Real extension icons.** `client/extension/icons/icon.svg` (orange rounded square + white play triangle, matching the `#f97316` ON badge). `gen-icons.mjs` rasterizes to 16/32/48/128 PNGs via `sharp`; PNGs committed so normal builds don't need `sharp`. Wired into `manifest.json` `icons` + `action.default_icon`. Replaces the Chrome puzzle-piece. (Closes the old "Logo design" next-step.) Remaining optional polish: swap active/inactive icon via `chrome.action.setIcon({ tabId, ... })` instead of the "ON" badge-text indicator.
+- **CI: Firefox zip + `extension-build/` fix.** [.github/workflows/deploy.yml](.github/workflows/deploy.yml) `extension-release` job now also runs `build:firefox`, attaches `watch-party-firefox-<ver>.zip` to the release, and syncs the **full** `extension-build/` set (content.js, **background.js**, manifest.json, icons/). Fixes a latent bug: `background.js` had never been synced there since the v0.5.0 dormant refactor, so the loadable-unpacked Chrome dir was non-loadable. `extension-build/` repopulated on this branch with a prod-WS build.
 
 ### v0.6.1 → v0.8.1 (patch line going forward)
 
@@ -96,14 +106,16 @@ Releases: [v0.4.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.
 
 ## Exact next step
 
-User is currently smoking v0.8.1 against YouTube and Cineby. Outstanding diagnostic: did Tampermonkey auto-pull v0.8.1? (Check DevTools console for the orange `🎬 Watch-Party vX.X.X loaded` banner.) If on v0.7.x or earlier, force a TM update check from the dashboard.
+1. **Merge v0.8.3 (this branch) and verify the Firefox build.** On merge to main, the manifest version change triggers CI to cut the `v0.8.3` release with both Chrome and Firefox zips. **CI changes can't be verified locally** — watch that first `extension-release` run: confirm `build:firefox` succeeds, the `watch-party-firefox-0.8.3.zip` asset attaches, and the `extension-build/` sync commit includes `background.js` + `icons/`.
+2. **Sideload-test on Zen.** `about:debugging` → This Firefox → Load Temporary Add-on → `dist/extension-firefox/manifest.json` (or unzip the release asset). Click the toolbar icon on a video page; expect injection + "ON" badge. Note Gecko's opt-in `<all_urls>` — first activation on a site may prompt for host-permission grant.
+3. **Local `main` is stale.** This worktree was reset onto `origin/main` (v0.8.2), but the primary worktree's checked-out `main` was still at the old v0.5.0 tip — `git pull` it there before doing more work.
 
-**Whatever ships next**: bump as a patch (`v0.8.2`), not a minor. See "Versioning convention" above.
+**Whatever ships next**: bump as a patch (`v0.8.4`), not a minor. See "Versioning convention" above.
 
 Open threads to pick from after smoke is clean:
 
 1. **Tighten Cineby selectors.** Current adapter uses defensive candidate-selector list and falls back to a top-right fixed pill. Once user provides a screenshot or DOM dump of Cineby's header, swap to a precise selector so the button lands natively in their UI.
-2. **Logo design.** Five ChatGPT image prompts are in the conversation tail of the v0.6.0-build chat. Once a winner is picked: downscale to 16/32/48/128 PNG, drop into `client/extension/icons/`, reference in `manifest.json` `action.default_icon` + `icons`, replace the badge-text state indicator with a real active/inactive icon swap via `chrome.action.setIcon({ tabId, ... })`.
+2. ✅ **Logo / icon — DONE in v0.8.3.** Play-triangle icon at 16/32/48/128 in `client/extension/icons/`, wired into `manifest.json` `icons` + `action.default_icon`. Only the optional active/inactive icon swap via `chrome.action.setIcon({ tabId, ... })` (replacing the "ON" badge-text indicator) remains if desired. A bespoke designed logo can still replace `icon.svg` later and regenerate via `gen-icons.mjs`.
 3. **Chrome Web Store listing.** Real one-click install path. Blockers: logo (item 2), ~200 words store copy, privacy policy stub hosted on the landing, $5 dev account fee, ~3-day review.
 4. **Service-worker WS migration** so cross-domain navigation can carry the live socket (not just session state). Today the WS dies with the page on nav; the SW grace window restores activation state but the socket reconnects.
 5. **Additional settings ideas** flagged but not built: sound on chat, vanity room name, message-level reactions, keyboard shortcuts (`chrome.commands`), typing-privacy toggle.

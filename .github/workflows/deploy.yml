@@ -124,11 +124,20 @@ jobs:
         if: steps.gate.outputs.exists == 'false'
         run: WS_URL="$PROD_WS_URL" npm run build:user
 
+      - name: Build Firefox extension with prod WS_URL
+        if: steps.gate.outputs.exists == 'false'
+        run: WS_URL="$PROD_WS_URL" npm run build:firefox
+
       - name: Sync extension-build/
         if: steps.gate.outputs.exists == 'false'
         run: |
+          # extension-build/ is the loadable-unpacked Chrome dir. It needs the
+          # full set: content.js, background.js, manifest.json, and icons/.
           cp dist/extension/content.js extension-build/content.js
+          cp dist/extension/background.js extension-build/background.js
           cp dist/extension/manifest.json extension-build/manifest.json
+          mkdir -p extension-build/icons
+          cp dist/extension/icons/*.png extension-build/icons/
 
       - name: Commit extension-build/ if changed
         if: steps.gate.outputs.exists == 'false'
@@ -138,22 +147,23 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add extension-build/content.js extension-build/manifest.json
+            git add extension-build/
             git commit -m "ci: sync extension-build/ for ${{ steps.ver.outputs.tag }} [skip ci]"
             git push
           fi
 
-      - name: Zip extension
+      - name: Zip extensions
         if: steps.gate.outputs.exists == 'false'
         run: |
-          cd dist/extension
-          zip -r "../../watch-party-${{ steps.ver.outputs.version }}.zip" .
+          ( cd dist/extension && zip -r "../../watch-party-${{ steps.ver.outputs.version }}.zip" . )
+          ( cd dist/extension-firefox && zip -r "../../watch-party-firefox-${{ steps.ver.outputs.version }}.zip" . )
 
       - name: Create GitHub release
         if: steps.gate.outputs.exists == 'false'
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" \
             "watch-party-${{ steps.ver.outputs.version }}.zip" \
+            "watch-party-firefox-${{ steps.ver.outputs.version }}.zip" \
             "dist/avious-party.user.js" \
             --title "Watch-Party ${{ steps.ver.outputs.tag }}" \
             --generate-notes

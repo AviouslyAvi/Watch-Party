@@ -1100,7 +1100,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.2")) {
+      if (latest && gt(latest, "0.8.3")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
