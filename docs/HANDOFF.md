@@ -1,9 +1,11 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-06-18
-Milestone: **v0.8.3 staged on branch — Firefox/Zen build target + real extension icons. v0.8.2 (TDZ fix) is the latest release on main; v0.8.3 not yet merged/released. Next bump after this is a patch (v0.8.4), not a minor.**
+Milestone: **v0.8.3 SHIPPED — Firefox/Zen build target + real extension icons live on main. [v0.8.3 release](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.8.3) auto-cut by CI with both Chrome + Firefox zips attached. Next bump is a patch (v0.8.4), not a minor.**
 
-> **2026-06-18 session (this branch, not yet merged):** Added Firefox/Zen support and extension icons, shipping as **v0.8.3**. See "What this session shipped" immediately below and the decision record [docs/decisions/2026-06-18-firefox-zen-support-and-icons.md](decisions/2026-06-18-firefox-zen-support-and-icons.md). Also fixed a latent bug: `extension-build/` was missing `background.js` since v0.5.0 (CI never synced it), making the loadable-unpacked Chrome dir non-loadable — now fixed and CI syncs the full set.
+> **2026-06-18 session — v0.8.3 shipped.** Added Firefox/Zen support and extension icons, released as **v0.8.3** via clean fast-forward of `origin/main` (`cf35fb8` → `e694a63`). CI release run [27787081127](https://github.com/AviouslyAvi/Watch-Party/actions/runs/27787081127) succeeded: built Firefox with prod WS_URL, attached `watch-party-firefox-0.8.3.zip` + `watch-party-0.8.3.zip` + `avious-party.user.js`, tagged v0.8.3. See "What this session shipped" below and the decision record [docs/decisions/2026-06-18-firefox-zen-support-and-icons.md](decisions/2026-06-18-firefox-zen-support-and-icons.md). Also fixed a latent bug: `extension-build/` was missing `background.js` since v0.5.0 (CI never synced it), making the loadable-unpacked Chrome dir non-loadable — now fixed (committed directly in `e694a63`; CI syncs the full set going forward). **Still owed:** sideload-test `dist/extension-firefox/` on Zen.
+>
+> **Repo-state note (important for next session):** `origin/main` lives on root `ace45ac` (the v0.6.x→v0.8.x lineage). An older **local-only** `main` on an unrelated root (`de2b5c0`, the v0.5.0 lineage) was orphaned — its features (peer-color, dormant/click-to-activate, typing, reactions) all already exist re-implemented on `origin/main`, so the primary worktree's `main` was reset (`git reset --hard origin/main`) rather than pulled (a plain pull errors on unrelated histories). If you see a stale `main` at v0.5.0 again in any worktree, reset it to `origin/main`; do not try to merge the two roots.
 
 ## Versioning convention (read this first)
 
@@ -37,7 +39,7 @@ The recent jumps to `v0.7.0` (full off-toggle) and `v0.8.0` (site adapters) were
 
 ## What this session shipped
 
-### v0.8.3 — Firefox/Zen support + icons (this branch, not yet merged)
+### v0.8.3 — Firefox/Zen support + icons (SHIPPED — live on main)
 
 Shipped as a patch (small additive feature). Lockstep version bump applied to `client/extension/manifest.json` and `client/userscript/banner.txt` → `0.8.3`.
 
