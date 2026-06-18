@@ -46,16 +46,18 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
   const panelHooks = {
     onCopyLink: () => {
       const url = currentRoomUrl();
-      navigator.clipboard.writeText(url).then(
-        () => panel?.appendSystem("Room link copied."),
-        () => panel?.appendSystem("Copy failed — link: " + url),
+      copyToClipboard(url).then((ok) =>
+        panel?.appendSystem(ok ? "Room link copied." : "Copy failed — link: " + url),
       );
     },
     onShareForNonInstallers: () => {
       const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
-      navigator.clipboard.writeText(url).then(
-        () => panel?.appendSystem("Onboarding link copied — friends without the extension will see install steps."),
-        () => panel?.appendSystem("Copy failed — link: " + url),
+      copyToClipboard(url).then((ok) =>
+        panel?.appendSystem(
+          ok
+            ? "Onboarding link copied — friends without the extension will see install steps."
+            : "Copy failed — link: " + url,
+        ),
       );
     },
     onToggleFFA: (next: boolean) => {
@@ -156,7 +158,9 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
     setTimeout(launchOnboarding, 600);
   }
 
-  const video = makeTopFrameAdapter();
+  const video = makeTopFrameAdapter(() =>
+    panel?.appendSystem("▶ Playing muted to stay in sync — click the video to restore sound."),
+  );
   const sync = createSyncClient({
     video,
     send: (m) => send(m),
@@ -282,15 +286,14 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
     },
     copyInviteLink() {
       const url = currentRoomUrl();
-      navigator.clipboard.writeText(url).then(
-        () => panel?.appendSystem("Room link copied — share it with your friends."),
-        () => panel?.appendSystem("Copy failed — link: " + url),
+      copyToClipboard(url).then((ok) =>
+        panel?.appendSystem(ok ? "Room link copied — share it with your friends." : "Copy failed — link: " + url),
       );
     },
   };
 }
 
-function makeTopFrameAdapter(): VideoAdapter {
+function makeTopFrameAdapter(onAutoplayMuted?: () => void): VideoAdapter {
   let v: HTMLVideoElement | null = document.querySelector("video");
   let iframe: HTMLIFrameElement | null = null;
   const listeners = new Set<(k: "play" | "pause" | "seek") => void>();
@@ -338,7 +341,7 @@ function makeTopFrameAdapter(): VideoAdapter {
 
   return {
     play: () => {
-      if (v) v.play().catch(() => {});
+      if (v) playWithAutoplayFallback(v, onAutoplayMuted);
       else postToIframe({ kind: "play" });
     },
     pause: () => {
@@ -361,6 +364,68 @@ function makeTopFrameAdapter(): VideoAdapter {
 function loadStoredName(): string | null {
   const n = localStorage.getItem("cp-name");
   return n && n.trim() ? n.slice(0, 32) : null;
+}
+
+/**
+ * Play a <video> while working around the receiver-side autoplay policy. A
+ * remote "play" arrives with no user gesture on this tab, so the browser
+ * rejects programmatic play() and the viewer silently freezes — out of sync,
+ * even though the play *message* arrived (looks like "pause works, play
+ * doesn't"). Muted autoplay is always permitted, so on rejection we mute and
+ * retry — keeping the video rolling and in sync — then restore sound on the
+ * viewer's next interaction anywhere on the page. The driver's own play() comes
+ * from a real click, succeeds unmuted, and never hits the fallback.
+ */
+function playWithAutoplayFallback(v: HTMLVideoElement, onMutedFallback?: () => void) {
+  v.play().catch(() => {
+    v.muted = true;
+    v.play()
+      .then(() => {
+        onMutedFallback?.();
+        const restore = () => {
+          v.muted = false;
+          document.removeEventListener("pointerdown", restore, true);
+        };
+        document.addEventListener("pointerdown", restore, true);
+      })
+      .catch(() => {});
+  });
+}
+
+/**
+ * Copy text to the clipboard, resilient across Firefox + Chrome and the sites
+ * we inject into. The async Clipboard API (`navigator.clipboard.writeText`) is
+ * blocked on pages that send `Permissions-Policy: clipboard-write=()` (several
+ * video hosts do) and is missing outside secure contexts — in those cases the
+ * promise rejects and the copy buttons feel dead. Fall back to a hidden
+ * <textarea> + `execCommand("copy")`, which is gated on the user gesture rather
+ * than the document's permission policy. Must be invoked synchronously from a
+ * click handler so transient activation is still live for the fallback.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Blocked by Permissions-Policy / not focused — fall through to legacy path.
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText =
+      "position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none;";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function ensureRoom(): { roomId: string; passphrase: string | null } {

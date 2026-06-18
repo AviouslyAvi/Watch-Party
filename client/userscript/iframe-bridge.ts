@@ -10,6 +10,29 @@ type FromIframe =
 
 const TAG = "__aviousParty__";
 
+/**
+ * Play the in-iframe <video>, working around the autoplay policy on the
+ * receiver. A remote "play" has no user gesture behind it, so the browser
+ * rejects programmatic play() and the viewer freezes out of sync. Muted
+ * autoplay is always allowed — mute + retry to stay in sync, then restore
+ * sound on the next interaction (which, in an iframe player, is a click on the
+ * video itself).
+ */
+function playWithAutoplayFallback(v: HTMLVideoElement) {
+  v.play().catch(() => {
+    v.muted = true;
+    v.play()
+      .then(() => {
+        const restore = () => {
+          v.muted = false;
+          document.removeEventListener("pointerdown", restore, true);
+        };
+        document.addEventListener("pointerdown", restore, true);
+      })
+      .catch(() => {});
+  });
+}
+
 export function runIframeBridge() {
   let video: HTMLVideoElement | null = null;
 
@@ -47,7 +70,7 @@ export function runIframeBridge() {
     if (!v) return;
     switch (m.kind) {
       case "play":
-        v.play().catch(() => {});
+        playWithAutoplayFallback(v);
         return;
       case "pause":
         v.pause();

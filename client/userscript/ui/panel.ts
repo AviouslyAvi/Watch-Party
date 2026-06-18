@@ -274,13 +274,18 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     }
   });
 
-  // Participant state — declared early so applyTheme()'s rerenderPeopleList()
-  // call doesn't hit a TDZ on currentYou during the initial-theme pass at boot.
-  // (Real bug — surfaced on cineby.sc invite-hash auto-activation, v0.8.1.)
+  // Participant + chat state — declared early so applyTheme()'s
+  // rerenderPeopleList()/rerenderChatColors() calls don't hit a TDZ during the
+  // initial-theme pass at boot. applyTheme() runs while the settings drawer is
+  // built (well before the "Chat" section below), so anything it touches must
+  // already be initialized here. (Real bug — TDZ on currentYou surfaced on
+  // cineby.sc invite-hash auto-activation in v0.8.1; the same trap on chatLog
+  // silently killed every panel button on boot until v0.8.4.)
   let currentParticipants: Participant[] = [];
   let currentYou = "";
   let currentAdminId = "";
   const nameMap = new Map<ClientId, string>();
+  const chatLog: ChatRecord[] = [];
 
   // ─────────────────────────── Settings drawer ───────────────────────────────
   function applyTheme() {
@@ -651,7 +656,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   }
 
   // ─────────────────────────── Chat ──────────────────────────────────────────
-  const chatLog: ChatRecord[] = [];
+  // chatLog is declared with the participant state above (TDZ-safe for applyTheme).
   function fmtTs(ts: number): string {
     const d = new Date(ts);
     const h = String(d.getHours()).padStart(2, "0");
