@@ -1,9 +1,11 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-06-21
-Milestone: **v0.8.4 SHIPPED — panel TDZ crash + receiver autoplay freeze + clipboard hardening, live on main. [v0.8.4 release](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.8.4) auto-cut by CI ([run 27893041280](https://github.com/AviouslyAvi/Watch-Party/actions/runs/27893041280)) with Chrome + Firefox zips + userscript attached. User confirmed working with a real two-peer test. Next bump is a patch (v0.8.5), not a minor.**
+Milestone: **v0.8.5 — five preset color themes (Midnight/Cinema/Synthwave/Forest/Ocean), merged to main; CI cutting the release. Next bump is a patch (v0.8.6), not a minor.**
 
-> **2026-06-21 session — v0.8.4 shipped (the "buttons + sync are dead" fix).** Three bugs fixed in one patch, all verified:
+> **2026-06-21 session (2) — v0.8.5 preset themes.** Added a one-click theme picker to the settings drawer. Five dark presets, each defining `bgColor` + `textColor` + `accent` (+ a precomputed readable `accentText`). Introduced two CSS vars — `--cp-accent` / `--cp-accent-text` — and replaced the hardcoded `#2563eb`/`#f97316` action colors (brand mark, copy/join/key-save/send buttons, active layout-mode pip) so a single token recolors every action surface. New **Theme** section renders five swatches (surface + accent dot + label; active gets an accent ring); a new freeform **Accent** picker sits beside Background/Text. Picking a preset syncs the pickers + ring; nudging any picker clears the ring (→ custom). `accentTextFor()` luma-checks a custom accent and flips button text dark/light for legibility. Migration is automatic — `loadSettings()` spreads over `DEFAULTS`, so existing users land on Midnight (orange); the one visible default change is copy/send buttons going blue→orange (matches the approved Midnight mockup). All in [client/userscript/ui/panel.ts](../client/userscript/ui/panel.ts). `tsc --noEmit` clean; `npm run build` emits all three targets. **Light theme deliberately deferred** — it needs the hardcoded internal grays (`#111` inputs, `#888` hints, `rgba(0,0,0,0.2)` drawer) audited, unlike the near-free dark presets. Adding more presets = one row in the `THEMES` array.
+>
+> **2026-06-21 session (1) — v0.8.4 shipped (the "buttons + sync are dead" fix).** Three bugs fixed in one patch, all verified:
 > 1. **Panel TDZ crash (root cause of everything).** `applyTheme()` runs while the settings drawer is built during `mountPanel()` and calls `rerenderChatColors()`, which reads `chatLog` — but `chatLog` was declared ~250 lines later. The TDZ `ReferenceError` threw mid-mount, *before* the copy/share/chat/reaction click listeners were attached AND before `bootTopFrame()` reached `createSyncClient()` — so every panel button silently did nothing ("can no longer select the copy room link") and sync never started ("not synced like it used to be"). Same class as the v0.8.1 `currentYou` TDZ; `chatLog` was the one missed. Fix: hoist `chatLog` into the early participant-state block. ([client/userscript/ui/panel.ts](../client/userscript/ui/panel.ts))
 > 2. **Receiver-side autoplay freeze.** A remote `play` has no user gesture on the viewer's tab, so the browser rejects programmatic `.play()`; the old `.catch(()=>{})` swallowed it and the viewer froze (pause synced, play didn't). Fix: `playWithAutoplayFallback()` — on rejection, mute + retry (muted autoplay is always allowed) to stay in sync, then restore sound on the viewer's next click. Applied in both the top-frame adapter ([main.ts](../client/userscript/main.ts)) and the iframe bridge ([iframe-bridge.ts](../client/userscript/iframe-bridge.ts)). Strictly safe: driver's gesture-backed play never mutes; allowed autoplay never mutes. Closes the long-standing "autoplay mitigation unimplemented" risk.
 > 3. **Clipboard hardening.** `navigator.clipboard.writeText` is blocked under `Permissions-Policy: clipboard-write=()` and outside secure contexts. Added `copyToClipboard()` with a hidden-`<textarea>` + `execCommand("copy")` fallback, used by both copy buttons and the site-adapter `copyInviteLink`. Verified in headless Chromium: copy lands the room URL on both normal and policy-blocked pages.
@@ -162,24 +164,24 @@ Open threads to pick from after smoke is clean:
 ## Resume prompt (paste into a fresh chat)
 
 ```text
-Continue work on the Watch-Party Chrome extension.
+Continue work on the Watch-Party extension.
 
 Repo root in the worktree:
-/Users/aviouslyavi/Claude/Projects/Watch-Party/.claude/worktrees/nice-shannon-4af022
+/Users/aviouslyavi/Claude/Projects/Watch-Party/.claude/worktrees/serene-pascal-bf6d34
 
 Before doing anything, read docs/HANDOFF.md — it has the full status. Briefly:
-v0.8.1 is live on main. Recent batch (v0.6.1 → v0.8.1): auto-activate on
-invite hash, panel toggle tab pinned to viewport, full on/off toggle for
-userscript with per-host localStorage persistence, site-adapter buttons on
-YouTube (next to Share) and Cineby (header pill, top-right fallback), and
-an unmissable pulsing activator pill.
+v0.8.5 (five preset color themes — Midnight/Cinema/Synthwave/Forest/Ocean,
+with a settings-drawer theme picker + freeform Accent picker driven by new
+--cp-accent / --cp-accent-text CSS vars) is merged to main; confirm CI cut
+the v0.8.5 release (Chrome + Firefox zips + userscript). v0.8.4 before it
+fixed the panel TDZ crash, receiver autoplay freeze, and clipboard fallback.
 
-VERSIONING: patch bumps only (next is v0.8.2). Do not bump minor or major
+VERSIONING: patch bumps only (next is v0.8.6). Do not bump minor or major
 unless I explicitly say so. Don't rewind versions — Tampermonkey treats
 lower as a downgrade and refuses to update.
 
-Immediate next step: confirm Cineby selectors land in the right spot once
-the user sends a DOM dump, OR pick from the open threads list in the
-handoff (logo design, Chrome Web Store listing, SW WS migration,
-additional settings, more site adapters).
+Immediate next step: verify the v0.8.5 release cut cleanly, then pick from
+the open threads (a light theme — needs the hardcoded internal grays audited;
+tighten Cineby selectors; Chrome Web Store listing; SW WS migration;
+more site adapters).
 ```

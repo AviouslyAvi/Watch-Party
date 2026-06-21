@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Watch-Party",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "Teleparty-style synchronized watch party for any site with a video player. Auto-activates on invite links; click the toolbar icon to start a party manually.",
   "icons": {
     "16": "icons/icon-16.png",
