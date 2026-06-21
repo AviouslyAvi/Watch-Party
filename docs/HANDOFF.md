@@ -1,8 +1,16 @@
 # Watch-Party — Handoff
 
 Last updated: 2026-06-21
-Milestone: **v0.8.5 — five preset color themes (Midnight/Cinema/Synthwave/Forest/Ocean), merged to main; CI cutting the release. Next bump is a patch (v0.8.6), not a minor.**
+Milestone: **v0.8.6 — follow-the-host navigation ("Bring everyone here") + Light theme (6th preset) + 3 more site adapters. Built + typechecked on branch `claude/wp-v086`; NOT yet merged/released. Next bump is a patch (v0.8.7), not a minor.**
 
+> **2026-06-21 session (3) — v0.8.6: follow-the-host navigation + Light theme + more adapters.** Three deliverables, all built green (`tsc --noEmit` clean, `npm run build` emits all three targets). On branch `claude/wp-v086`, not yet merged.
+>
+> 1. **Follow-the-host navigation (headline).** New `navigate` wire message ([shared/protocol.ts](../shared/protocol.ts) `NavigateMsg = {from, url, title?, ts}`). The host clicks a new **"Bring everyone here"** button (admin/operators only) in the panel; since the host is *already on the destination*, the broadcast goes over a live socket — sidestepping the "WS dies on nav" problem entirely. Relay ([relay/room.ts](../relay/room.ts)) gates it to **admin + operators only — deliberately NOT freeForAll** (yanking everyone is more disruptive than a seek), re-stamps `from` from `conn.id` (anti-spoof), validates `http(s)` URLs, and broadcasts to everyone but the sender. Followers ([client/userscript/main.ts](../client/userscript/main.ts) `case "navigate"` → `startFollowCountdown`) get a **5s cancelable countdown banner** ("Host moved to X — following in Ns… [Stay here]"); on expiry they `window.location.href` to `roomLinkForUrl(url, roomId, passphrase)` (strips host's hash, re-appends their own `#party=<id>` + key) → new page re-boots, re-joins the same room, resyncs from the relay's `lastState`. Userscript needs no nav change (`@match *://*/*` re-boots anywhere). **Extension gap fixed** ([client/extension/background.ts](../client/extension/background.ts)): an already-activated tab navigating cross-origin previously hit the grace branch and never re-injected even with a `#party=` hash present — added a `hasPartyHash(d.url)` check in the cross-origin `onCommitted` branch that clears the alarm + re-activates on the new origin. Panel UI in [panel.ts](../client/userscript/ui/panel.ts): `onBringEveryone` hook, `cp-bring` button (gated on a new `canDrive` flag threaded through `setState`), and `setFollowBanner`/`hideFollowBanner` methods (reuse the update-banner visual pattern).
+> 2. **Light theme (6th preset).** Internal grays now **derive from `--cp-bg`/`--cp-text` via `color-mix`** set in `applyTheme()` — new tokens `--cp-border` (text 16% → bg), `--cp-muted` (55%), `--cp-input-bg` (8%), `--cp-hover` (14%). Every hardcoded gray in panel.ts (`#111`/`#222`/`#333`/`#444`/`#666`/`#777`/`#888`/`#bbb`/`#2a2a2a` borders, hints, input fills, hovers, timestamps, system text) replaced with these vars; the danger "Turn off" button re-derived as red mixed into bg. Because the tokens reference the anchors, they recompute under the high-contrast override too. Added `{ id:"light", bgColor:"#f7f7f8", textColor:"#1a1a1d", accent:"#f97316", accentText:"#ffffff" }` to `THEMES` (brand orange kept; data-driven swatch row renders it automatically). Kept as-is: high-contrast `#000/#fff`, `rgba(0,0,0,*)` overlays (read fine on both surfaces), update-banner blues.
+> 3. **3 more site adapters.** Extracted Cineby's native/fixed-pill button logic into a shared `mountLauncherButton()` + `makeStreamingAdapter({host, idSuffix, isWatchPage, candidates})` factory in [site-adapters/index.ts](../client/userscript/site-adapters/index.ts); refactored `cineby.ts` onto it (behavior preserved) and added `netflix.ts`, `disneyplus.ts`, `max.ts`, registered in `SITE_ADAPTERS`. **Selectors are untested guesses** — these will mostly land as the fixed top-right fallback pill until verified on the live sites; the panel controls work regardless.
+>
+> **Known limitations (intentional for v1):** (a) *Mass-exit room reset* — if host + all followers leave the old page at once the room can briefly empty, resetting `operators`/`passphrase` (room.ts) while `lastState` survives; host usually reconnects first and reclaims admin, and the passphrase rides the followed URL's `key=` hash, so it effectively persists — but operators lose their crown. (b) *No host self-detection* — navigation is a manual "come where I am" button, never auto-detected. **Still owed:** Cineby precise selectors are blocked pending a DOM dump/screenshot of Cineby's header from the user. **CI when merged:** push touches `manifest.json` (→ release), `relay/room.ts` + `shared/protocol.ts` (→ relay redeploy) — watch BOTH; if the relay deploy fails, `navigate` silently no-ops server-side (`gh workflow run deploy.yml --ref main -f force_relay=true`).
+>
 > **2026-06-21 session (2) — v0.8.5 preset themes.** Added a one-click theme picker to the settings drawer. Five dark presets, each defining `bgColor` + `textColor` + `accent` (+ a precomputed readable `accentText`). Introduced two CSS vars — `--cp-accent` / `--cp-accent-text` — and replaced the hardcoded `#2563eb`/`#f97316` action colors (brand mark, copy/join/key-save/send buttons, active layout-mode pip) so a single token recolors every action surface. New **Theme** section renders five swatches (surface + accent dot + label; active gets an accent ring); a new freeform **Accent** picker sits beside Background/Text. Picking a preset syncs the pickers + ring; nudging any picker clears the ring (→ custom). `accentTextFor()` luma-checks a custom accent and flips button text dark/light for legibility. Migration is automatic — `loadSettings()` spreads over `DEFAULTS`, so existing users land on Midnight (orange); the one visible default change is copy/send buttons going blue→orange (matches the approved Midnight mockup). All in [client/userscript/ui/panel.ts](../client/userscript/ui/panel.ts). `tsc --noEmit` clean; `npm run build` emits all three targets. **Light theme deliberately deferred** — it needs the hardcoded internal grays (`#111` inputs, `#888` hints, `rgba(0,0,0,0.2)` drawer) audited, unlike the near-free dark presets. Adding more presets = one row in the `THEMES` array.
 >
 > **2026-06-21 session (1) — v0.8.4 shipped (the "buttons + sync are dead" fix).** Three bugs fixed in one patch, all verified:
@@ -117,20 +125,20 @@ Releases: [v0.4.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.
 
 ## Exact next step
 
-1. **Merge v0.8.3 (this branch) and verify the Firefox build.** On merge to main, the manifest version change triggers CI to cut the `v0.8.3` release with both Chrome and Firefox zips. **CI changes can't be verified locally** — watch that first `extension-release` run: confirm `build:firefox` succeeds, the `watch-party-firefox-0.8.3.zip` asset attaches, and the `extension-build/` sync commit includes `background.js` + `icons/`.
-2. **Sideload-test on Zen.** `about:debugging` → This Firefox → Load Temporary Add-on → `dist/extension-firefox/manifest.json` (or unzip the release asset). Click the toolbar icon on a video page; expect injection + "ON" badge. Note Gecko's opt-in `<all_urls>` — first activation on a site may prompt for host-permission grant.
-3. **Local `main` is stale.** This worktree was reset onto `origin/main` (v0.8.2), but the primary worktree's checked-out `main` was still at the old v0.5.0 tip — `git pull` it there before doing more work.
+1. **Merge `claude/wp-v086` and verify the v0.8.6 release + relay deploy.** On merge to main the manifest bump triggers CI to cut `v0.8.6` (Chrome + Firefox zips + userscript), AND the `relay/room.ts`/`shared/protocol.ts` changes trigger a **relay redeploy**. **CI can't be verified locally** — watch BOTH the `extension-release` job and the relay deploy. **If the relay deploy fails, the `navigate` message silently no-ops server-side** → retry `gh workflow run deploy.yml --ref main -f force_relay=true`.
+2. **Two-client follow test (the headline; manual — needs a live relay + two sessions).** Local recipe: `npm run dev:relay` (wrangler dev on :8787), `npm run build` (bakes `ws://localhost:8787`), load `dist/avious-party.user.js` in two browser profiles (or sideload `dist/extension/`). Both join the same room → host navigates to a new URL → clicks **"Bring everyone here"** → follower sees the 5s countdown banner; confirm **[Stay here] cancels** and otherwise it auto-navigates, re-joins the same room, and resyncs. Test same-site, SPA (Cineby), and cross-origin. Confirm a non-driver's button is hidden and the server drops a forged `navigate`.
+3. **Light theme eyeball.** Settings → pick **Light**; check inputs/borders/hints/buttons/danger button/reactions row for legibility; confirm high-contrast still overrides.
+4. **Primary `main` working tree was left stale** (a `git update-ref` moved the ref to v0.8.5 without updating files; the auto-mode classifier blocked the `git reset --hard` cleanup). Before working in `~/Claude/Projects/Watch-Party` directly, run `git reset --hard origin/main` there (untracked `Handoffs/` is safe). v0.8.6 work was done in the clean worktree `.claude/worktrees/wp-v086`.
 
-**Whatever ships next**: bump as a patch (`v0.8.4`), not a minor. See "Versioning convention" above.
+**Whatever ships next**: bump as a patch (`v0.8.7`), not a minor. See "Versioning convention" above.
 
 Open threads to pick from after smoke is clean:
 
-1. **Tighten Cineby selectors.** Current adapter uses defensive candidate-selector list and falls back to a top-right fixed pill. Once user provides a screenshot or DOM dump of Cineby's header, swap to a precise selector so the button lands natively in their UI.
-2. ✅ **Logo / icon — DONE in v0.8.3.** Play-triangle icon at 16/32/48/128 in `client/extension/icons/`, wired into `manifest.json` `icons` + `action.default_icon`. Only the optional active/inactive icon swap via `chrome.action.setIcon({ tabId, ... })` (replacing the "ON" badge-text indicator) remains if desired. A bespoke designed logo can still replace `icon.svg` later and regenerate via `gen-icons.mjs`.
-3. **Chrome Web Store listing.** Real one-click install path. Blockers: logo (item 2), ~200 words store copy, privacy policy stub hosted on the landing, $5 dev account fee, ~3-day review.
-4. **Service-worker WS migration** so cross-domain navigation can carry the live socket (not just session state). Today the WS dies with the page on nav; the SW grace window restores activation state but the socket reconnects.
+1. **Tighten Cineby selectors (STILL BLOCKED — needs user input).** The adapter (now built on the shared `makeStreamingAdapter` factory) uses a defensive candidate-selector list and falls back to a top-right fixed pill. **Provide a screenshot or DOM dump of Cineby's header** to swap in a precise selector so the button lands natively.
+2. **Verify/tighten the new adapter selectors (Netflix/Disney+/Max).** Added in v0.8.6 but the selectors are untested guesses — they currently land as the fixed-pill fallback. Confirm on each live site and replace `candidates` with real anchors. Also still open: Hulu, Crunchyroll, Twitch.
+3. **Chrome Web Store listing.** Real one-click install path. Blockers: ~200 words store copy, privacy policy stub hosted on the landing, $5 dev account fee, ~3-day review. (Logo done in v0.8.3.)
+4. **Service-worker WS migration** so cross-domain navigation can carry the live socket (not just session state). Today the WS dies with the page on nav; the SW grace window restores activation state but the socket reconnects. (Follow-the-host now re-joins cleanly via the room hash, so this is lower priority — it would only save the reconnect blip.)
 5. **Additional settings ideas** flagged but not built: sound on chat, vanity room name, message-level reactions, keyboard shortcuts (`chrome.commands`), typing-privacy toggle.
-6. **More site adapters.** Registry takes 5 lines per site. Candidates: Netflix, Disney+, Hulu, HBO Max, Crunchyroll, Twitch.
 
 ## Open decisions
 
@@ -158,6 +166,7 @@ Open threads to pick from after smoke is clean:
 - **Rename spam:** 5s server-side cooldown per conn; excess silently dropped.
 - **Self-promote attempt:** server `case "promote"` guards `conn.id !== adminId` — non-admin promote/demote silently dropped.
 - **Typing-event spam:** server rewrites `from`/`name` from trusted conn so identity-spoofing is blocked; client throttle bounds normal volume.
+- **Forced-navigation / yank attempt (v0.8.6):** server `case "navigate"` admits only admin + operators (NOT freeForAll), re-stamps `from` from `conn.id`, and rejects non-`http(s)` URLs — a non-driver's `navigate` is silently dropped. Followers also apply a 5s cancelable countdown, so even a legit nav is interruptible.
 
 ---
 
@@ -167,21 +176,25 @@ Open threads to pick from after smoke is clean:
 Continue work on the Watch-Party extension.
 
 Repo root in the worktree:
-/Users/aviouslyavi/Claude/Projects/Watch-Party/.claude/worktrees/serene-pascal-bf6d34
+/Users/aviouslyavi/Claude/Projects/Watch-Party/.claude/worktrees/wp-v086
 
 Before doing anything, read docs/HANDOFF.md — it has the full status. Briefly:
-v0.8.5 (five preset color themes — Midnight/Cinema/Synthwave/Forest/Ocean,
-with a settings-drawer theme picker + freeform Accent picker driven by new
---cp-accent / --cp-accent-text CSS vars) is merged to main; confirm CI cut
-the v0.8.5 release (Chrome + Firefox zips + userscript). v0.8.4 before it
-fixed the panel TDZ crash, receiver autoplay freeze, and clipboard fallback.
+v0.8.6 is BUILT (tsc + build green) on branch claude/wp-v086 but NOT yet
+merged/released. It adds three things: (1) follow-the-host navigation — a
+"Bring everyone here" button (admin/operators) broadcasts a new `navigate`
+wire message; followers get a 5s cancelable countdown then navigate to the
+host's URL with the room hash re-appended and resync; (2) a Light theme (6th
+preset) — internal grays now derive from bg/text via color-mix; (3) three more
+site adapters (Netflix/Disney+/Max, untested selectors → fixed-pill fallback).
 
-VERSIONING: patch bumps only (next is v0.8.6). Do not bump minor or major
+VERSIONING: patch bumps only (next is v0.8.7). Do not bump minor or major
 unless I explicitly say so. Don't rewind versions — Tampermonkey treats
 lower as a downgrade and refuses to update.
 
-Immediate next step: verify the v0.8.5 release cut cleanly, then pick from
-the open threads (a light theme — needs the hardcoded internal grays audited;
-tighten Cineby selectors; Chrome Web Store listing; SW WS migration;
-more site adapters).
+Immediate next step: merge claude/wp-v086 and watch BOTH the v0.8.6
+extension-release AND the relay redeploy (if relay deploy fails, `navigate`
+no-ops server-side — rerun with force_relay=true). Then the manual two-client
+follow test (live relay + two sessions). Open threads: Cineby precise selectors
+(BLOCKED on a DOM dump from me), verify the new adapter selectors on live
+sites, Chrome Web Store listing.
 ```

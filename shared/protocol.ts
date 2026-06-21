@@ -47,6 +47,16 @@ export type RenameMsg = {
 export type PromoteMsg = { type: "promote"; target: ClientId };
 export type DemoteMsg = { type: "demote"; target: ClientId };
 
+// Host "bring everyone here" — broadcast the host's current page so followers
+// navigate to it (with the room id re-appended to the hash) and re-join.
+export type NavigateMsg = {
+  type: "navigate";
+  from: ClientId;
+  url: string;
+  title?: string;
+  ts: number;
+};
+
 export type PresenceMsg =
   | { type: "hello"; name: string; pathname: string; v: number; passphrase?: string }
   | { type: "welcome"; you: ClientId; adminId: ClientId; operators: ClientId[]; freeForAll: boolean; participants: Participant[]; lastState: SyncMsg | null }
@@ -58,7 +68,7 @@ export type PresenceMsg =
 
 export type Participant = { id: ClientId; name: string; isAdmin: boolean; isOperator: boolean };
 
-export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | TypingMsg | RenameMsg | PromoteMsg | DemoteMsg | PresenceMsg;
+export type WireMsg = SyncMsg | ChatMsg | ReactionMsg | TypingMsg | RenameMsg | PromoteMsg | DemoteMsg | NavigateMsg | PresenceMsg;
 
 export function isSyncMsg(m: WireMsg): m is SyncMsg {
   return m.type === "play" || m.type === "pause" || m.type === "seek" || m.type === "state";

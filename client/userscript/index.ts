@@ -4,8 +4,17 @@ import { isHostDisabled, mountActivator, setHostDisabled, type ActivatorHandle }
 import { findAdapter, runSiteAdapter, type SiteAdapter } from "./site-adapters";
 import { youtubeAdapter } from "./site-adapters/youtube";
 import { cinebyAdapter } from "./site-adapters/cineby";
+import { netflixAdapter } from "./site-adapters/netflix";
+import { disneyplusAdapter } from "./site-adapters/disneyplus";
+import { maxAdapter } from "./site-adapters/max";
 
-const SITE_ADAPTERS: SiteAdapter[] = [youtubeAdapter, cinebyAdapter];
+const SITE_ADAPTERS: SiteAdapter[] = [
+  youtubeAdapter,
+  cinebyAdapter,
+  netflixAdapter,
+  disneyplusAdapter,
+  maxAdapter,
+];
 
 declare const VERSION: string;
 

@@ -64,6 +64,14 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
       freeForAll = next;
       send({ type: "ffa", freeForAll: next });
     },
+    onBringEveryone: () => {
+      // Announce the page we're already on — followers re-join here. Send the
+      // bare URL (no hash); each follower re-appends their own room fragment.
+      if (!canDrive()) return;
+      const bare = location.href.split("#")[0] ?? location.href;
+      send({ type: "navigate", from: you, url: bare, title: document.title.slice(0, 200), ts: Date.now() });
+      panel?.appendSystem("📍 Brought everyone to this page.");
+    },
     onSendChat: (text: string) => {
       const ts = Date.now();
       send({ type: "chat", from: you, name: me, text, ts });
@@ -128,7 +136,7 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
   function mountUI() {
     panel = mountPanel(panelHooks, me || undefined);
     if (you) {
-      panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+      panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
     }
     if (pendingUpdate) panel.showUpdateBanner(pendingUpdate.tag, pendingUpdate.href);
   }
@@ -211,7 +219,7 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
         operators = msg.operators;
         freeForAll = msg.freeForAll;
         participants = msg.participants;
-        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
         if (canDrive()) {
           sync.startHeartbeat();
           if (you === adminId) panel?.appendSystem("You are the admin. ⭐ to grant playback to others, 👑 stays with you.");
@@ -224,7 +232,7 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
         adminId = msg.adminId;
         operators = msg.operators;
         participants = msg.participants;
-        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+        panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
         if (canDrive()) sync.startHeartbeat();
         return;
       case "rename":
@@ -260,6 +268,11 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
       case "typing":
         if (msg.from !== you) panel?.showTyping(msg.from, msg.name);
         return;
+      case "navigate":
+        if (msg.from === you) return; // never follow our own broadcast
+        if (msg.from !== adminId && !operators.includes(msg.from)) return; // defensive; server already gated
+        startFollowCountdown(msg.url, msg.title);
+        return;
       case "play":
       case "pause":
       case "seek":
@@ -267,6 +280,35 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
         sync.applyRemote(msg);
         return;
     }
+  }
+
+  // Auto-follow with a cancelable countdown. The host is already on the target
+  // page; we re-append our own room fragment so the new page re-joins the same
+  // room (and resyncs from the relay's lastState).
+  let followTimer: ReturnType<typeof setInterval> | null = null;
+  function startFollowCountdown(url: string, title?: string) {
+    if (followTimer) clearInterval(followTimer);
+    const target = roomLinkForUrl(url, roomId, passphrase);
+    const where = (title && title.trim()) || new URL(url, location.href).host;
+    let secs = 5;
+    const cancel = () => {
+      if (followTimer) clearInterval(followTimer);
+      followTimer = null;
+      panel?.hideFollowBanner();
+      panel?.appendSystem("Stayed here — rejoin anytime from the room link.");
+    };
+    const render = () => panel?.setFollowBanner(`Host moved to ${where} — following in ${secs}s…`, cancel);
+    render();
+    followTimer = setInterval(() => {
+      secs -= 1;
+      if (secs <= 0) {
+        if (followTimer) clearInterval(followTimer);
+        followTimer = null;
+        window.location.href = target;
+        return;
+      }
+      render();
+    }, 1000);
   }
 
   return {
@@ -445,6 +487,14 @@ function ensureRoom(): { roomId: string; passphrase: string | null } {
 function roomLinkForCurrent(id: string, passphrase: string | null): string {
   const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
   return `${location.origin}${location.pathname}${location.search}#${frag}`;
+}
+
+// Build a room link for an arbitrary base URL (used by follow-the-host): strip
+// any existing hash and append our room fragment so the destination re-joins.
+function roomLinkForUrl(base: string, id: string, passphrase: string | null): string {
+  const bare = base.split("#")[0] ?? base;
+  const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
+  return `${bare}#${frag}`;
 }
 
 function wrapperLinkFor(videoLink: string, id: string, passphrase: string | null): string {
