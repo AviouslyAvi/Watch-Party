@@ -93,8 +93,13 @@
       await inject(d.tabId);
       await setIcon(d.tabId, true);
     } else if (newOrigin) {
-      chrome.alarms.create(CROSS_ALARM(d.tabId), { delayInMinutes: CROSS_DOMAIN_GRACE_MIN });
-      await setIcon(d.tabId, false);
+      if (hasPartyHash(d.url)) {
+        await chrome.alarms.clear(CROSS_ALARM(d.tabId));
+        await activate(d.tabId, d.url);
+      } else {
+        chrome.alarms.create(CROSS_ALARM(d.tabId), { delayInMinutes: CROSS_DOMAIN_GRACE_MIN });
+        await setIcon(d.tabId, false);
+      }
     }
   });
   chrome.webNavigation.onReferenceFragmentUpdated.addListener(async (d) => {

@@ -190,7 +190,8 @@
     { id: "cinema", name: "Cinema", bgColor: "#0d0b0c", textColor: "#f3e7d6", accent: "#e11d48", accentText: "#ffffff" },
     { id: "synthwave", name: "Synthwave", bgColor: "#1a1030", textColor: "#f0e6ff", accent: "#ec4899", accentText: "#ffffff" },
     { id: "forest", name: "Forest", bgColor: "#0f1f17", textColor: "#e2efe8", accent: "#34d399", accentText: "#04241a" },
-    { id: "ocean", name: "Ocean", bgColor: "#0b1f2e", textColor: "#e0f2fe", accent: "#38bdf8", accentText: "#04293b" }
+    { id: "ocean", name: "Ocean", bgColor: "#0b1f2e", textColor: "#e0f2fe", accent: "#38bdf8", accentText: "#04293b" },
+    { id: "light", name: "Light", bgColor: "#f7f7f8", textColor: "#1a1a1d", accent: "#f97316", accentText: "#ffffff" }
   ];
   function accentTextFor(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -238,7 +239,7 @@
     color: var(--cp-text, #eee);
     background: color-mix(in srgb, var(--cp-bg, #141416) calc(var(--cp-bg-opacity, 0.88) * 100%), transparent);
     backdrop-filter: blur(6px);
-    border-left: 1px solid #333; z-index: 2147483647;
+    border-left: 1px solid var(--cp-border, #333); z-index: 2147483647;
     box-shadow: -6px 0 24px rgba(0,0,0,0.5);
     display: flex; flex-direction: column;
     transition: transform 200ms ease;
@@ -252,66 +253,71 @@
     transform: translateY(-50%);
     width: 28px; height: 56px;
     background: var(--cp-bg, #141416); color: var(--cp-text, #eee);
-    border: 1px solid #333; border-right: none;
+    border: 1px solid var(--cp-border, #333); border-right: none;
     border-radius: 8px 0 0 8px;
     cursor: pointer; font-size: 14px; padding: 0;
     z-index: 2147483647;
     transition: right 200ms ease;
   `;
     host.innerHTML = `
-    <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid var(--cp-border,#333);display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <span style="font-weight:600;color:var(--cp-accent,#f97316);">\u{1F3AC} Watch-Party</span>
       <div style="display:flex;gap:4px;align-items:center;">
-        <div id="cp-layout-modes" style="display:flex;gap:2px;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden;">
-          <button type="button" data-mode="overlay" class="cp-mode-btn" title="Overlay the chat on top of the page" style="background:transparent;color:#bbb;border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u29C9</button>
-          <button type="button" data-mode="push" class="cp-mode-btn" title="Push the page over to make room" style="background:transparent;color:#bbb;border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u21E4</button>
-          <button type="button" data-mode="hidden" class="cp-mode-btn" title="Hide the chat (tab stays visible)" style="background:transparent;color:#bbb;border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u2304</button>
+        <div id="cp-layout-modes" style="display:flex;gap:2px;border:1px solid var(--cp-border,#2a2a2a);border-radius:6px;overflow:hidden;">
+          <button type="button" data-mode="overlay" class="cp-mode-btn" title="Overlay the chat on top of the page" style="background:transparent;color:var(--cp-muted,#bbb);border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u29C9</button>
+          <button type="button" data-mode="push" class="cp-mode-btn" title="Push the page over to make room" style="background:transparent;color:var(--cp-muted,#bbb);border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u21E4</button>
+          <button type="button" data-mode="hidden" class="cp-mode-btn" title="Hide the chat (tab stays visible)" style="background:transparent;color:var(--cp-muted,#bbb);border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u2304</button>
         </div>
-        <button id="cp-settings-btn" title="Settings" style="background:transparent;color:#bbb;border:1px solid #2a2a2a;border-radius:6px;padding:3px 6px;cursor:pointer;font:inherit;font-size:13px;line-height:1;">\u2699</button>
+        <button id="cp-settings-btn" title="Settings" style="background:transparent;color:var(--cp-muted,#bbb);border:1px solid var(--cp-border,#2a2a2a);border-radius:6px;padding:3px 6px;cursor:pointer;font:inherit;font-size:13px;line-height:1;">\u2699</button>
       </div>
     </div>
     <a id="cp-update-banner" href="#" target="_blank" rel="noopener" style="display:none;padding:8px 12px;background:#1e3a8a;color:#dbeafe;font-size:12px;text-decoration:none;border-bottom:1px solid #1d4ed8;">
       <span id="cp-update-text"></span>
     </a>
-    <div id="cp-settings-drawer" style="display:none;padding:10px 12px;border-bottom:1px solid #333;background:rgba(0,0,0,0.2);max-height:50vh;overflow-y:auto;font-size:12px;"></div>
+    <div id="cp-follow-banner" style="display:none;padding:8px 12px;background:var(--cp-accent,#f97316);color:var(--cp-accent-text,#fff);font-size:12px;border-bottom:1px solid var(--cp-border,#333);align-items:center;justify-content:space-between;gap:8px;">
+      <span id="cp-follow-text" style="flex:1;min-width:0;"></span>
+      <button id="cp-follow-cancel" type="button" style="background:rgba(0,0,0,0.18);color:inherit;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font:inherit;font-size:11px;white-space:nowrap;">Stay here</button>
+    </div>
+    <div id="cp-settings-drawer" style="display:none;padding:10px 12px;border-bottom:1px solid var(--cp-border,#333);background:rgba(0,0,0,0.2);max-height:50vh;overflow-y:auto;font-size:12px;"></div>
     <form id="cp-name-form" style="padding:12px;display:none;flex-direction:column;gap:8px;">
-      <label style="font-size:12px;color:#bbb;">Pick a display name to join chat</label>
-      <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
+      <label style="font-size:12px;color:var(--cp-muted,#bbb);">Pick a display name to join chat</label>
+      <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:var(--cp-input-bg,#111);border:1px solid var(--cp-border,#333);border-radius:6px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
       <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
     </form>
     <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-      <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;gap:6px;">
+      <div style="padding:8px 12px;border-bottom:1px solid var(--cp-border,#2a2a2a);display:flex;flex-direction:column;gap:6px;">
         <button id="cp-copy" style="width:100%;padding:7px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
-        <button id="cp-share-onboard" title="Sends friends through install steps first" style="width:100%;padding:6px;background:transparent;color:#bbb;border:1px solid #333;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">Copy onboarding link</button>
+        <button id="cp-bring" title="Bring everyone in the room to the page you're on now" style="display:none;width:100%;padding:7px;background:transparent;color:var(--cp-accent,#f97316);border:1px solid var(--cp-accent,#f97316);border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">\u{1F4CD} Bring everyone here</button>
+        <button id="cp-share-onboard" title="Sends friends through install steps first" style="width:100%;padding:6px;background:transparent;color:var(--cp-muted,#bbb);border:1px solid var(--cp-border,#333);border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">Copy onboarding link</button>
       </div>
-      <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
-        <button id="cp-key-toggle" type="button" style="background:none;border:none;color:#bbb;cursor:pointer;padding:0;font:inherit;text-decoration:underline;">\u{1F512} Add room key</button>
+      <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid var(--cp-border,#2a2a2a);display:none;font-size:12px;color:var(--cp-muted,#bbb);">
+        <button id="cp-key-toggle" type="button" style="background:none;border:none;color:var(--cp-muted,#bbb);cursor:pointer;padding:0;font:inherit;text-decoration:underline;">\u{1F512} Add room key</button>
         <form id="cp-key-form" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
-          <input id="cp-key-input" maxlength="64" placeholder="Out-of-band secret" autocomplete="off" style="padding:6px;background:#111;border:1px solid #333;border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
+          <input id="cp-key-input" maxlength="64" placeholder="Out-of-band secret" autocomplete="off" style="padding:6px;background:var(--cp-input-bg,#111);border:1px solid var(--cp-border,#333);border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
           <div style="display:flex;gap:6px;">
             <button id="cp-key-save" type="submit" style="flex:1;padding:5px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
-            <button id="cp-key-clear" type="button" style="padding:5px 10px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;">Clear</button>
+            <button id="cp-key-clear" type="button" style="padding:5px 10px;background:var(--cp-hover,#333);color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;">Clear</button>
           </div>
-          <div style="color:#888;font-size:11px;line-height:1.3;">Friends need the new link to reconnect. Share the key separately for real protection.</div>
+          <div style="color:var(--cp-muted,#888);font-size:11px;line-height:1.3;">Friends need the new link to reconnect. Share the key separately for real protection.</div>
         </form>
       </div>
-      <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;">
+      <div id="cp-ffa-wrap" style="padding:8px 12px;border-bottom:1px solid var(--cp-border,#2a2a2a);display:none;">
         <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
           <input type="checkbox" id="cp-ffa"/> Free-for-all controls
         </label>
       </div>
-      <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;font-size:12px;color:#bbb;max-height:120px;overflow-y:auto;"></div>
+      <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid var(--cp-border,#2a2a2a);font-size:12px;color:var(--cp-muted,#bbb);max-height:120px;overflow-y:auto;"></div>
       <div id="cp-chat-wrap" style="flex:1;position:relative;display:flex;flex-direction:column;min-height:0;">
         <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:inherit;min-height:0;"></div>
         <div id="cp-reactions-float" style="position:absolute;left:0;right:0;bottom:0;height:0;pointer-events:none;overflow:visible;"></div>
       </div>
-      <div id="cp-reactions" style="display:flex;gap:4px;padding:6px 12px;border-top:1px solid #2a2a2a;background:rgba(0,0,0,0.15);transition:opacity 200ms;">
+      <div id="cp-reactions" style="display:flex;gap:4px;padding:6px 12px;border-top:1px solid var(--cp-border,#2a2a2a);background:rgba(0,0,0,0.15);transition:opacity 200ms;">
         ${REACTION_EMOJIS.map(
-      (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid #2a2a2a;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`
+      (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid var(--cp-border,#2a2a2a);border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`
     ).join("")}
       </div>
-      <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:#888;opacity:0;transition:opacity 200ms;line-height:16px;"></div>
-      <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
+      <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:var(--cp-muted,#888);opacity:0;transition:opacity 200ms;line-height:16px;"></div>
+      <form id="cp-form" style="display:flex;border-top:1px solid var(--cp-border,#2a2a2a);">
         <input id="cp-input" placeholder="Type a message\u2026" style="flex:1;padding:10px;background:transparent;border:none;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
         <button style="background:none;border:none;color:var(--cp-accent,#2563eb);padding:0 12px;cursor:pointer;font:inherit;">Send</button>
       </form>
@@ -329,13 +335,14 @@
         85% { opacity: 1; }
         100% { transform: translate(-50%, -120px); opacity: 0; }
       }
-      .cp-react-btn:hover { background:#222 !important; border-color:#444 !important; }
+      .cp-react-btn:hover { background:var(--cp-hover,#222) !important; border-color:var(--cp-border,#444) !important; }
       .cp-react-btn:active { transform: scale(0.92); }
-      .cp-mode-btn[data-active="1"] { background:#2a2a2a !important; color:var(--cp-accent,#f97316) !important; }
+      .cp-mode-btn[data-active="1"] { background:var(--cp-hover,#2a2a2a) !important; color:var(--cp-accent,#f97316) !important; }
+      #cp-bring:hover { background:var(--cp-hover,#222) !important; }
       #avious-party-panel.cp-high-contrast { --cp-bg: #000 !important; --cp-text: #fff !important; --cp-bg-opacity: 1 !important; }
       .cp-people-row { display:flex; align-items:center; gap:6px; padding:2px 0; }
-      .cp-people-row button.cp-op-btn { background:transparent;border:1px solid #333;border-radius:4px;color:#bbb;padding:1px 6px;cursor:pointer;font-size:10px; }
-      .cp-people-row button.cp-op-btn:hover { background:#222;border-color:#444; }
+      .cp-people-row button.cp-op-btn { background:transparent;border:1px solid var(--cp-border,#333);border-radius:4px;color:var(--cp-muted,#bbb);padding:1px 6px;cursor:pointer;font-size:10px; }
+      .cp-people-row button.cp-op-btn:hover { background:var(--cp-hover,#222);border-color:var(--cp-border,#444); }
     `;
       document.head.appendChild(styleEl);
     }
@@ -409,8 +416,16 @@
       host.style.setProperty("--cp-accent-text", settings.accentText);
       host.style.setProperty("--cp-bg-opacity", String(settings.opacity));
       host.style.setProperty("--cp-font-size", `${settings.fontSize}px`);
+      const derived = {
+        "--cp-border": "color-mix(in srgb, var(--cp-text) 16%, var(--cp-bg))",
+        "--cp-muted": "color-mix(in srgb, var(--cp-text) 55%, var(--cp-bg))",
+        "--cp-input-bg": "color-mix(in srgb, var(--cp-text) 8%, var(--cp-bg))",
+        "--cp-hover": "color-mix(in srgb, var(--cp-text) 14%, var(--cp-bg))"
+      };
+      for (const [k, v] of Object.entries(derived)) host.style.setProperty(k, v);
       tab.style.setProperty("--cp-bg", settings.bgColor);
       tab.style.setProperty("--cp-text", settings.textColor);
+      tab.style.setProperty("--cp-border", derived["--cp-border"]);
       host.classList.toggle("cp-high-contrast", settings.highContrast);
       rerenderPeopleList();
       rerenderChatColors();
@@ -429,14 +444,14 @@
       drawer.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:12px;">
         <section>
-          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Display name</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--cp-muted,#bbb);">Display name</div>
           <form id="cp-rename-form" style="display:flex;gap:6px;">
-            <input id="cp-rename-input" maxlength="32" value="${escapeAttr(currentName)}" style="flex:1;padding:5px;background:#111;border:1px solid #333;border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
+            <input id="cp-rename-input" maxlength="32" value="${escapeAttr(currentName)}" style="flex:1;padding:5px;background:var(--cp-input-bg,#111);border:1px solid var(--cp-border,#333);border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
             <button type="submit" style="padding:5px 8px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
           </form>
         </section>
         <section>
-          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Theme</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--cp-muted,#bbb);">Theme</div>
           <div id="cp-theme-presets" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px;">
             ${THEMES.map((t) => {
         const active = t.bgColor === settings.bgColor && t.textColor === settings.textColor && t.accent === settings.accent;
@@ -448,7 +463,7 @@
           </div>
         </section>
         <section>
-          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Appearance</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--cp-muted,#bbb);">Appearance</div>
           <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <span>Background</span>
             <input type="color" id="cp-set-bg" value="${settings.bgColor}"/>
@@ -471,10 +486,10 @@
           </label>
         </section>
         <section>
-          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Accessibility</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--cp-muted,#bbb);">Accessibility</div>
           <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <span>Colorblind mode</span>
-            <select id="cp-set-cb" style="background:#111;border:1px solid #333;color:var(--cp-text,#eee);padding:3px;border-radius:4px;font:inherit;">
+            <select id="cp-set-cb" style="background:var(--cp-input-bg,#111);border:1px solid var(--cp-border,#333);color:var(--cp-text,#eee);padding:3px;border-radius:4px;font:inherit;">
               <option value="none">None</option>
               <option value="deuter">Deuteranopia</option>
               <option value="protan">Protanopia</option>
@@ -489,12 +504,12 @@
           </label>
         </section>
         <section>
-          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Behavior</div>
-          <button id="cp-replay-tour" style="width:100%;padding:5px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;margin-bottom:6px;">Replay onboarding tour</button>
-          <button id="cp-deactivate" title="Closes the socket, tears down the chat, and remembers this site as off. Click the \u{1F3AC} button in the corner to turn it back on." style="width:100%;padding:5px;background:#3a1414;color:#fca5a5;border:1px solid #5c1f1f;border-radius:4px;cursor:pointer;font:inherit;">Turn off Watch-Party here</button>
-          <div style="font-size:11px;color:#777;margin-top:4px;line-height:1.4;">Dismisses the chat for this site. The \u{1F3AC} button in the corner reactivates. Invite links auto-reactivate.</div>
+          <div style="font-weight:600;margin-bottom:4px;color:var(--cp-muted,#bbb);">Behavior</div>
+          <button id="cp-replay-tour" style="width:100%;padding:5px;background:var(--cp-hover,#333);color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;margin-bottom:6px;">Replay onboarding tour</button>
+          <button id="cp-deactivate" title="Closes the socket, tears down the chat, and remembers this site as off. Click the \u{1F3AC} button in the corner to turn it back on." style="width:100%;padding:5px;background:color-mix(in srgb, #ef4444 16%, var(--cp-bg,#141416));color:#ef4444;border:1px solid color-mix(in srgb, #ef4444 40%, var(--cp-bg,#141416));border-radius:4px;cursor:pointer;font:inherit;">Turn off Watch-Party here</button>
+          <div style="font-size:11px;color:var(--cp-muted,#777);margin-top:4px;line-height:1.4;">Dismisses the chat for this site. The \u{1F3AC} button in the corner reactivates. Invite links auto-reactivate.</div>
         </section>
-        <section style="font-size:11px;color:#777;border-top:1px solid #2a2a2a;padding-top:8px;">
+        <section style="font-size:11px;color:var(--cp-muted,#777);border-top:1px solid var(--cp-border,#2a2a2a);padding-top:8px;">
           Watch-Party. Room data lives in memory only \u2014 close the tab to leave.
         </section>
       </div>
@@ -641,7 +656,22 @@
     let collapsed = settings.layoutMode === "hidden";
     void collapsed;
     $("#cp-copy").addEventListener("click", () => hooks.onCopyLink());
+    $("#cp-bring").addEventListener("click", () => hooks.onBringEveryone());
     $("#cp-share-onboard").addEventListener("click", () => hooks.onShareForNonInstallers());
+    const followBanner = $("#cp-follow-banner");
+    const followText = $("#cp-follow-text");
+    const followCancel = $("#cp-follow-cancel");
+    let followCancelCb = null;
+    followCancel.addEventListener("click", () => followCancelCb?.());
+    function setFollowBanner(text, onCancel) {
+      followText.textContent = text;
+      followCancelCb = onCancel;
+      followBanner.style.display = "flex";
+    }
+    function hideFollowBanner() {
+      followBanner.style.display = "none";
+      followCancelCb = null;
+    }
     const ffa = $("#cp-ffa");
     ffa.addEventListener("change", () => hooks.onToggleFFA(ffa.checked));
     const form = $("#cp-form");
@@ -781,6 +811,8 @@
       }
       const isAdmin = s.you === s.adminId;
       $("#cp-ffa-wrap").style.display = isAdmin ? "block" : "none";
+      const canDrive = s.canDrive ?? isAdmin;
+      $("#cp-bring").style.display = canDrive ? "block" : "none";
       keyWrap.style.display = isAdmin ? "block" : "none";
       keyToggle.textContent = s.passphrase ? "\u{1F513} Key set \u2014 change or clear" : "\u{1F512} Add room key";
       keyInput.value = s.passphrase ?? "";
@@ -796,7 +828,7 @@
     }
     function renderChatLine(rec) {
       const liveName = nameMap.get(rec.from) ?? "\u2026";
-      const tsPart = settings.showTimestamps ? `<span class="cp-ts" style="color:#666;font-size:10px;margin-right:6px;">${fmtTs(rec.ts)}</span>` : "";
+      const tsPart = settings.showTimestamps ? `<span class="cp-ts" style="color:var(--cp-muted,#666);font-size:10px;margin-right:6px;">${fmtTs(rec.ts)}</span>` : "";
       rec.el.innerHTML = `${tsPart}<b data-cp-from="${rec.from}" style="color:${colorFor(rec.from, settings.colorblind)};">${escapeHtml(liveName)}</b>: ${escapeHtml(rec.text)}`;
     }
     function appendChat(id, name, text, ts = Date.now()) {
@@ -825,7 +857,7 @@
     }
     function appendSystem(text) {
       const div = document.createElement("div");
-      div.style.cssText = "color:#888;font-style:italic;margin-bottom:6px;";
+      div.style.cssText = "color:var(--cp-muted,#888);font-style:italic;margin-bottom:6px;";
       div.textContent = text;
       const chat = $("#cp-chat");
       chat.appendChild(div);
@@ -855,6 +887,8 @@
       appendSystem,
       revealChat,
       showUpdateBanner,
+      setFollowBanner,
+      hideFollowBanner,
       showReaction,
       showTyping,
       applyRename,
@@ -1064,6 +1098,12 @@
         freeForAll = next;
         send({ type: "ffa", freeForAll: next });
       },
+      onBringEveryone: () => {
+        if (!canDrive()) return;
+        const bare = location.href.split("#")[0] ?? location.href;
+        send({ type: "navigate", from: you, url: bare, title: document.title.slice(0, 200), ts: Date.now() });
+        panel?.appendSystem("\u{1F4CD} Brought everyone to this page.");
+      },
       onSendChat: (text) => {
         const ts = Date.now();
         send({ type: "chat", from: you, name: me, text, ts });
@@ -1125,7 +1165,7 @@
     function mountUI() {
       panel = mountPanel(panelHooks, me || void 0);
       if (you) {
-        panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+        panel.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
       }
       if (pendingUpdate) panel.showUpdateBanner(pendingUpdate.tag, pendingUpdate.href);
     }
@@ -1185,7 +1225,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.5")) {
+      if (latest && gt(latest, "0.8.6")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
@@ -1198,7 +1238,7 @@
           operators = msg.operators;
           freeForAll = msg.freeForAll;
           participants = msg.participants;
-          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
           if (canDrive()) {
             sync.startHeartbeat();
             if (you === adminId) panel?.appendSystem("You are the admin. \u2B50 to grant playback to others, \u{1F451} stays with you.");
@@ -1211,7 +1251,7 @@
           adminId = msg.adminId;
           operators = msg.operators;
           participants = msg.participants;
-          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase });
+          panel?.setState({ you, adminId, freeForAll, participants, roomUrl: currentRoomUrl(), passphrase, canDrive: canDrive() });
           if (canDrive()) sync.startHeartbeat();
           return;
         case "rename":
@@ -1248,6 +1288,11 @@
         case "typing":
           if (msg.from !== you) panel?.showTyping(msg.from, msg.name);
           return;
+        case "navigate":
+          if (msg.from === you) return;
+          if (msg.from !== adminId && !operators.includes(msg.from)) return;
+          startFollowCountdown(msg.url, msg.title);
+          return;
         case "play":
         case "pause":
         case "seek":
@@ -1255,6 +1300,31 @@
           sync.applyRemote(msg);
           return;
       }
+    }
+    let followTimer = null;
+    function startFollowCountdown(url, title) {
+      if (followTimer) clearInterval(followTimer);
+      const target = roomLinkForUrl(url, roomId, passphrase);
+      const where = title && title.trim() || new URL(url, location.href).host;
+      let secs = 5;
+      const cancel = () => {
+        if (followTimer) clearInterval(followTimer);
+        followTimer = null;
+        panel?.hideFollowBanner();
+        panel?.appendSystem("Stayed here \u2014 rejoin anytime from the room link.");
+      };
+      const render = () => panel?.setFollowBanner(`Host moved to ${where} \u2014 following in ${secs}s\u2026`, cancel);
+      render();
+      followTimer = setInterval(() => {
+        secs -= 1;
+        if (secs <= 0) {
+          if (followTimer) clearInterval(followTimer);
+          followTimer = null;
+          window.location.href = target;
+          return;
+        }
+        render();
+      }, 1e3);
     }
     return {
       teardownUI() {
@@ -1399,6 +1469,11 @@
   function roomLinkForCurrent(id, passphrase) {
     const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
     return `${location.origin}${location.pathname}${location.search}#${frag}`;
+  }
+  function roomLinkForUrl(base, id, passphrase) {
+    const bare = base.split("#")[0] ?? base;
+    const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
+    return `${bare}#${frag}`;
   }
   function wrapperLinkFor(videoLink, id, passphrase) {
     const bare = videoLink.split("#")[0] ?? videoLink;
