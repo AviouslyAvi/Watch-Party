@@ -2,6 +2,19 @@
 (() => {
   // client/userscript/iframe-bridge.ts
   var TAG = "__aviousParty__";
+  function playWithAutoplayFallback(v) {
+    v.play().catch(() => {
+      v.muted = true;
+      v.play().then(() => {
+        const restore = () => {
+          v.muted = false;
+          document.removeEventListener("pointerdown", restore, true);
+        };
+        document.addEventListener("pointerdown", restore, true);
+      }).catch(() => {
+      });
+    });
+  }
   function runIframeBridge() {
     let video = null;
     function findVideo() {
@@ -35,8 +48,7 @@
       if (!v) return;
       switch (m.kind) {
         case "play":
-          v.play().catch(() => {
-          });
+          playWithAutoplayFallback(v);
           return;
         case "pause":
           v.pause();
@@ -372,6 +384,7 @@
     let currentYou = "";
     let currentAdminId = "";
     const nameMap = /* @__PURE__ */ new Map();
+    const chatLog = [];
     function applyTheme() {
       host.style.setProperty("--cp-bg", settings.bgColor);
       host.style.setProperty("--cp-text", settings.textColor);
@@ -704,7 +717,6 @@
       rerenderPeopleList();
       rerenderChatColors();
     }
-    const chatLog = [];
     function fmtTs(ts) {
       const d = new Date(ts);
       const h = String(d.getHours()).padStart(2, "0");
@@ -965,16 +977,16 @@
     const panelHooks = {
       onCopyLink: () => {
         const url = currentRoomUrl();
-        navigator.clipboard.writeText(url).then(
-          () => panel?.appendSystem("Room link copied."),
-          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
+        copyToClipboard(url).then(
+          (ok) => panel?.appendSystem(ok ? "Room link copied." : "Copy failed \u2014 link: " + url)
         );
       },
       onShareForNonInstallers: () => {
         const url = wrapperLinkFor(currentRoomUrl(), roomId, passphrase);
-        navigator.clipboard.writeText(url).then(
-          () => panel?.appendSystem("Onboarding link copied \u2014 friends without the extension will see install steps."),
-          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
+        copyToClipboard(url).then(
+          (ok) => panel?.appendSystem(
+            ok ? "Onboarding link copied \u2014 friends without the extension will see install steps." : "Copy failed \u2014 link: " + url
+          )
         );
       },
       onToggleFFA: (next) => {
@@ -1066,7 +1078,9 @@
       onboardingFired = true;
       setTimeout(launchOnboarding, 600);
     }
-    const video = makeTopFrameAdapter();
+    const video = makeTopFrameAdapter(
+      () => panel?.appendSystem("\u25B6 Playing muted to stay in sync \u2014 click the video to restore sound.")
+    );
     const sync = createSyncClient({
       video,
       send: (m) => send(m),
@@ -1100,7 +1114,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.3")) {
+      if (latest && gt(latest, "0.8.4")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
@@ -1191,14 +1205,13 @@
       },
       copyInviteLink() {
         const url = currentRoomUrl();
-        navigator.clipboard.writeText(url).then(
-          () => panel?.appendSystem("Room link copied \u2014 share it with your friends."),
-          () => panel?.appendSystem("Copy failed \u2014 link: " + url)
+        copyToClipboard(url).then(
+          (ok) => panel?.appendSystem(ok ? "Room link copied \u2014 share it with your friends." : "Copy failed \u2014 link: " + url)
         );
       }
     };
   }
-  function makeTopFrameAdapter() {
+  function makeTopFrameAdapter(onAutoplayMuted) {
     let v = document.querySelector("video");
     let iframe = null;
     const listeners = /* @__PURE__ */ new Set();
@@ -1240,8 +1253,7 @@
     setInterval(() => postToIframe({ kind: "queryState" }), 1e3);
     return {
       play: () => {
-        if (v) v.play().catch(() => {
-        });
+        if (v) playWithAutoplayFallback2(v, onAutoplayMuted);
         else postToIframe({ kind: "play" });
       },
       pause: () => {
@@ -1263,6 +1275,43 @@
   function loadStoredName() {
     const n = localStorage.getItem("cp-name");
     return n && n.trim() ? n.slice(0, 32) : null;
+  }
+  function playWithAutoplayFallback2(v, onMutedFallback) {
+    v.play().catch(() => {
+      v.muted = true;
+      v.play().then(() => {
+        onMutedFallback?.();
+        const restore = () => {
+          v.muted = false;
+          document.removeEventListener("pointerdown", restore, true);
+        };
+        document.addEventListener("pointerdown", restore, true);
+      }).catch(() => {
+      });
+    });
+  }
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none;";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
   }
   function ensureRoom() {
     const h = new URLSearchParams(location.hash.replace(/^#/, ""));
