@@ -185,10 +185,27 @@
   var TYPING_DECAY_MS = 3e3;
   var TYPING_SEND_THROTTLE_MS = 1500;
   var SIDEBAR_WIDTH = 320;
+  var THEMES = [
+    { id: "midnight", name: "Midnight", bgColor: "#141416", textColor: "#eeeeee", accent: "#f97316", accentText: "#1a1206" },
+    { id: "cinema", name: "Cinema", bgColor: "#0d0b0c", textColor: "#f3e7d6", accent: "#e11d48", accentText: "#ffffff" },
+    { id: "synthwave", name: "Synthwave", bgColor: "#1a1030", textColor: "#f0e6ff", accent: "#ec4899", accentText: "#ffffff" },
+    { id: "forest", name: "Forest", bgColor: "#0f1f17", textColor: "#e2efe8", accent: "#34d399", accentText: "#04241a" },
+    { id: "ocean", name: "Ocean", bgColor: "#0b1f2e", textColor: "#e0f2fe", accent: "#38bdf8", accentText: "#04293b" }
+  ];
+  function accentTextFor(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m || !m[1]) return "#ffffff";
+    const n = parseInt(m[1], 16);
+    const r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+    const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luma > 0.6 ? "#1a1206" : "#ffffff";
+  }
   var DEFAULTS = {
     layoutMode: "overlay",
     bgColor: "#141416",
     textColor: "#eeeeee",
+    accent: "#f97316",
+    accentText: "#1a1206",
     opacity: 0.88,
     fontSize: 13,
     colorblind: "none",
@@ -243,7 +260,7 @@
   `;
     host.innerHTML = `
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <span style="font-weight:600;color:#f97316;">\u{1F3AC} Watch-Party</span>
+      <span style="font-weight:600;color:var(--cp-accent,#f97316);">\u{1F3AC} Watch-Party</span>
       <div style="display:flex;gap:4px;align-items:center;">
         <div id="cp-layout-modes" style="display:flex;gap:2px;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden;">
           <button type="button" data-mode="overlay" class="cp-mode-btn" title="Overlay the chat on top of the page" style="background:transparent;color:#bbb;border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">\u29C9</button>
@@ -260,11 +277,11 @@
     <form id="cp-name-form" style="padding:12px;display:none;flex-direction:column;gap:8px;">
       <label style="font-size:12px;color:#bbb;">Pick a display name to join chat</label>
       <input id="cp-name-input" maxlength="32" placeholder="e.g. avi" autocomplete="off" style="padding:8px;background:#111;border:1px solid #333;border-radius:6px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
-      <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
+      <button id="cp-name-submit" type="submit" disabled style="padding:8px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:6px;cursor:pointer;opacity:0.5;">Join chat</button>
     </form>
     <div id="cp-main" style="display:flex;flex-direction:column;flex:1;min-height:0;">
       <div style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;flex-direction:column;gap:6px;">
-        <button id="cp-copy" style="width:100%;padding:7px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
+        <button id="cp-copy" style="width:100%;padding:7px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:6px;cursor:pointer;font:inherit;">Copy room link</button>
         <button id="cp-share-onboard" title="Sends friends through install steps first" style="width:100%;padding:6px;background:transparent;color:#bbb;border:1px solid #333;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">Copy onboarding link</button>
       </div>
       <div id="cp-key-wrap" style="padding:8px 12px;border-bottom:1px solid #2a2a2a;display:none;font-size:12px;color:#bbb;">
@@ -272,7 +289,7 @@
         <form id="cp-key-form" style="display:none;flex-direction:column;gap:6px;margin-top:6px;">
           <input id="cp-key-input" maxlength="64" placeholder="Out-of-band secret" autocomplete="off" style="padding:6px;background:#111;border:1px solid #333;border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
           <div style="display:flex;gap:6px;">
-            <button id="cp-key-save" type="submit" style="flex:1;padding:5px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
+            <button id="cp-key-save" type="submit" style="flex:1;padding:5px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
             <button id="cp-key-clear" type="button" style="padding:5px 10px;background:#333;color:var(--cp-text,#eee);border:none;border-radius:4px;cursor:pointer;font:inherit;">Clear</button>
           </div>
           <div style="color:#888;font-size:11px;line-height:1.3;">Friends need the new link to reconnect. Share the key separately for real protection.</div>
@@ -296,7 +313,7 @@
       <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:#888;opacity:0;transition:opacity 200ms;line-height:16px;"></div>
       <form id="cp-form" style="display:flex;border-top:1px solid #2a2a2a;">
         <input id="cp-input" placeholder="Type a message\u2026" style="flex:1;padding:10px;background:transparent;border:none;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
-        <button style="background:none;border:none;color:#2563eb;padding:0 12px;cursor:pointer;font:inherit;">Send</button>
+        <button style="background:none;border:none;color:var(--cp-accent,#2563eb);padding:0 12px;cursor:pointer;font:inherit;">Send</button>
       </form>
     </div>
   `;
@@ -314,7 +331,7 @@
       }
       .cp-react-btn:hover { background:#222 !important; border-color:#444 !important; }
       .cp-react-btn:active { transform: scale(0.92); }
-      .cp-mode-btn[data-active="1"] { background:#2a2a2a !important; color:#f97316 !important; }
+      .cp-mode-btn[data-active="1"] { background:#2a2a2a !important; color:var(--cp-accent,#f97316) !important; }
       #avious-party-panel.cp-high-contrast { --cp-bg: #000 !important; --cp-text: #fff !important; --cp-bg-opacity: 1 !important; }
       .cp-people-row { display:flex; align-items:center; gap:6px; padding:2px 0; }
       .cp-people-row button.cp-op-btn { background:transparent;border:1px solid #333;border-radius:4px;color:#bbb;padding:1px 6px;cursor:pointer;font-size:10px; }
@@ -388,11 +405,24 @@
     function applyTheme() {
       host.style.setProperty("--cp-bg", settings.bgColor);
       host.style.setProperty("--cp-text", settings.textColor);
+      host.style.setProperty("--cp-accent", settings.accent);
+      host.style.setProperty("--cp-accent-text", settings.accentText);
       host.style.setProperty("--cp-bg-opacity", String(settings.opacity));
       host.style.setProperty("--cp-font-size", `${settings.fontSize}px`);
+      tab.style.setProperty("--cp-bg", settings.bgColor);
+      tab.style.setProperty("--cp-text", settings.textColor);
       host.classList.toggle("cp-high-contrast", settings.highContrast);
       rerenderPeopleList();
       rerenderChatColors();
+    }
+    function refreshThemeSwatches() {
+      Array.from(host.querySelectorAll(".cp-theme-swatch")).forEach((btn) => {
+        const preset = THEMES.find((t) => t.id === btn.dataset.theme);
+        if (!preset) return;
+        const active = preset.bgColor === settings.bgColor && preset.textColor === settings.textColor && preset.accent === settings.accent;
+        btn.style.borderColor = active ? preset.accent : "transparent";
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
     }
     function renderSettingsDrawer() {
       const drawer = $("#cp-settings-drawer");
@@ -402,8 +432,20 @@
           <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Display name</div>
           <form id="cp-rename-form" style="display:flex;gap:6px;">
             <input id="cp-rename-input" maxlength="32" value="${escapeAttr(currentName)}" style="flex:1;padding:5px;background:#111;border:1px solid #333;border-radius:4px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
-            <button type="submit" style="padding:5px 8px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
+            <button type="submit" style="padding:5px 8px;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;border-radius:4px;cursor:pointer;font:inherit;">Save</button>
           </form>
+        </section>
+        <section>
+          <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Theme</div>
+          <div id="cp-theme-presets" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px;">
+            ${THEMES.map((t) => {
+        const active = t.bgColor === settings.bgColor && t.textColor === settings.textColor && t.accent === settings.accent;
+        return `<button type="button" class="cp-theme-swatch" data-theme="${t.id}" title="${escapeAttr(t.name)}" aria-pressed="${active ? "true" : "false"}" style="border:2px solid ${active ? t.accent : "transparent"};border-radius:6px;background:${t.bgColor};padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <span style="width:20px;height:20px;border-radius:50%;background:${t.accent};"></span>
+                <span style="font-size:10px;color:${t.textColor};line-height:1;">${escapeHtml(t.name)}</span>
+              </button>`;
+      }).join("")}
+          </div>
         </section>
         <section>
           <div style="font-weight:600;margin-bottom:4px;color:#bbb;">Appearance</div>
@@ -414,6 +456,10 @@
           <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <span>Text</span>
             <input type="color" id="cp-set-text" value="${settings.textColor}"/>
+          </label>
+          <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+            <span>Accent</span>
+            <input type="color" id="cp-set-accent" value="${settings.accent}"/>
           </label>
           <label style="display:block;margin-bottom:6px;">
             <span>Opacity: <span id="cp-opacity-val">${settings.opacity.toFixed(2)}</span></span>
@@ -457,11 +503,36 @@
         settings.bgColor = e.target.value;
         saveSettings(settings);
         applyTheme();
+        refreshThemeSwatches();
       });
       $("#cp-set-text").addEventListener("input", (e) => {
         settings.textColor = e.target.value;
         saveSettings(settings);
         applyTheme();
+        refreshThemeSwatches();
+      });
+      $("#cp-set-accent").addEventListener("input", (e) => {
+        settings.accent = e.target.value;
+        settings.accentText = accentTextFor(settings.accent);
+        saveSettings(settings);
+        applyTheme();
+        refreshThemeSwatches();
+      });
+      Array.from(host.querySelectorAll(".cp-theme-swatch")).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const preset = THEMES.find((t) => t.id === btn.dataset.theme);
+          if (!preset) return;
+          settings.bgColor = preset.bgColor;
+          settings.textColor = preset.textColor;
+          settings.accent = preset.accent;
+          settings.accentText = preset.accentText;
+          saveSettings(settings);
+          applyTheme();
+          $("#cp-set-bg").value = preset.bgColor;
+          $("#cp-set-text").value = preset.textColor;
+          $("#cp-set-accent").value = preset.accent;
+          refreshThemeSwatches();
+        });
       });
       const opacityInput = $("#cp-set-opacity");
       opacityInput.addEventListener("input", () => {
@@ -1114,7 +1185,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.4")) {
+      if (latest && gt(latest, "0.8.5")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
