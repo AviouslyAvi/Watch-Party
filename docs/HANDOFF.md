@@ -1,7 +1,7 @@
 # Watch-Party — Handoff
 
-Last updated: 2026-06-21
-Milestone: **v0.8.7 — committed + pushed, [PR #7](https://github.com/AviouslyAvi/Watch-Party/pull/7) OPEN + green (typecheck ✅, MERGEABLE/CLEAN), AWAITING MERGE. Fixes the one gap the v0.8.6 follow-test found: a first-time cross-origin follower now carries its display name in the follow URL hash and auto-rejoins instead of stalling at the name gate. Patch bump (manifest + banner → 0.8.7). v0.8.6 itself is fully SHIPPED. Next bump after this is v0.8.8, still patch.**
+Last updated: 2026-06-21 (session 5)
+Milestone: **v0.8.7 — fully SHIPPED. [PR #7](https://github.com/AviouslyAvi/Watch-Party/pull/7) merged (squash `56af161`); release [v0.8.7](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.8.7) published with all three assets (`avious-party.user.js`, `watch-party-0.8.7.zip`, `watch-party-firefox-0.8.7.zip`). Deploy run [27912867408](https://github.com/AviouslyAvi/Watch-Party/actions/runs/27912867408): `extension-release` ✅, `relay` + `landing` correctly **skipped** (no relay/shared changes → `navigate` handler unchanged from v0.8.6). Fixed the one gap the v0.8.6 follow-test found: a first-time cross-origin follower now carries its display name in the follow URL hash and auto-rejoins instead of stalling at the name gate. Patch bump (manifest + banner → 0.8.7). Next bump is v0.8.8, still patch.**
 
 > **2026-06-21 session (4, cont.) — v0.8.7: cross-origin follow name-carry fix.** Closes the gap the follow-test surfaced (see session-4 note below). Client-only change in [client/userscript/main.ts](../client/userscript/main.ts) — shared by userscript AND extension:
 > 1. `roomLinkForUrl()` gained an optional `name` arg; `startFollowCountdown()` passes the follower's own `me` into the follow target, so the destination URL becomes `…#party=<id>&key=<pp>&name=<follower>`.
@@ -141,10 +141,11 @@ Releases: [v0.4.1](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.4.
 
 ## Exact next step
 
+> ✅ **DONE (session 5):** v0.8.7 SHIPPED. PR #7 changes re-verified against the actual diff (all 5 items present + correct), then merged (squash `56af161`). Deploy run [27912867408](https://github.com/AviouslyAvi/Watch-Party/actions/runs/27912867408) green — `extension-release` ✅, `relay` + `landing` skipped as expected. Release [v0.8.7](https://github.com/AviouslyAvi/Watch-Party/releases/tag/v0.8.7) published with all three assets. Primary `main` fast-forwarded to `origin/main` (`c186fa2`). Open thread #6 closed and live.
+>
 > ✅ **DONE (session 4):** (a) v0.8.6 merged ([PR #6](https://github.com/AviouslyAvi/Watch-Party/pull/6)), released, relay redeployed clean — `navigate` is live server-side. (b) Follow test run via automated harness — **33/33** (v0.8.6) + **16/16** (v0.8.7 re-test). (c) Primary `main` working tree reset to origin/main. (d) Light theme eyeballed — legible + high-contrast overrides. (e) v0.8.7 fix for the cross-origin name-gate gap **built + verified** (Open thread #6 resolved).
 
-1. **MERGE [PR #7](https://github.com/AviouslyAvi/Watch-Party/pull/7) to ship v0.8.7.** Already committed + pushed on `claude/great-pike-0ea82e`; PR is open, typecheck green, MERGEABLE/CLEAN. **The merge was blocked by the auto-mode classifier** (Avi authorized "push & open PR" but not the merge) — so it needs Avi's explicit go-ahead, or Avi merges it in the GitHub UI. On merge the manifest bump cuts the `v0.8.7` release (Chrome + Firefox zips + userscript). **No relay/shared changes this time** → relay does NOT redeploy (the `navigate` server handler is unchanged from v0.8.6). Just watch the `extension-release` job + confirm the v0.8.7 release assets.
-2. **(optional) Manual two-client confirm.** Automated 16/16 already covers it against the live relay, but a human spot-check in two real browser profiles never hurts — load the v0.8.7 userscript, party on site X, follow the host to a brand-new site Y you've never used, confirm you land synced without re-typing your name.
+1. **(optional) Manual two-client confirm.** Automated 16/16 already covers it against the live relay, but a human spot-check in two real browser profiles never hurts — load the v0.8.7 userscript, party on site X, follow the host to a brand-new site Y you've never used, confirm you land synced without re-typing your name.
 
 **Whatever ships next**: bump as a patch (`v0.8.8`), not a minor. See "Versioning convention" above.
 
@@ -155,7 +156,7 @@ Open threads to pick from after smoke is clean:
 3. **Chrome Web Store listing.** Real one-click install path. Blockers: ~200 words store copy, privacy policy stub hosted on the landing, $5 dev account fee, ~3-day review. (Logo done in v0.8.3.)
 4. **Service-worker WS migration** so cross-domain navigation can carry the live socket (not just session state). Today the WS dies with the page on nav; the SW grace window restores activation state but the socket reconnects. (Follow-the-host now re-joins cleanly via the room hash, so this is lower priority — it would only save the reconnect blip.)
 5. **Additional settings ideas** flagged but not built: sound on chat, vanity room name, message-level reactions, keyboard shortcuts (`chrome.commands`), typing-privacy toggle.
-6. ~~**Cross-origin first-time follow stalls at the name gate.**~~ ✅ **FIXED in v0.8.7** (built + verified, pending merge — see the v0.8.7 note at top). The follower now carries its display name in the follow URL hash; the destination adopts + persists it and auto-rejoins. Verified 16/16 against the live relay.
+6. ~~**Cross-origin first-time follow stalls at the name gate.**~~ ✅ **FIXED + SHIPPED in v0.8.7.** The follower now carries its display name in the follow URL hash; the destination adopts + persists it and auto-rejoins. Verified 16/16 against the live relay; merged via PR #7 (`56af161`) and live in all three distribution channels.
 
 ## Open decisions
 
