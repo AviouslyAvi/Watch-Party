@@ -173,12 +173,20 @@ chrome.webNavigation.onCommitted.addListener(async (d) => {
     await inject(d.tabId);
     await setIcon(d.tabId, true);
   } else if (newOrigin) {
-    // Cross-origin: don't inject. Start grace window if not already pending.
-    // We can't observe whether an alarm exists, but create() with the same name
-    // replaces — so re-firing on every cross-domain hop just resets the timer,
-    // which is the desired behavior (each new origin restarts the countdown).
-    chrome.alarms.create(CROSS_ALARM(d.tabId), { delayInMinutes: CROSS_DOMAIN_GRACE_MIN });
-    await setIcon(d.tabId, false);
+    if (hasPartyHash(d.url)) {
+      // Following a host across origins — the `party=<id>` hash is the explicit
+      // opt-in (same signal as a fresh invite landing). Re-activate on the new
+      // origin instead of tearing down, so the followed tab re-joins the room.
+      await chrome.alarms.clear(CROSS_ALARM(d.tabId));
+      await activate(d.tabId, d.url);
+    } else {
+      // Cross-origin without an invite hash: don't inject. Start grace window if
+      // not already pending. create() with the same name replaces — so re-firing
+      // on every cross-domain hop just resets the timer, which is desired (each
+      // new origin restarts the countdown).
+      chrome.alarms.create(CROSS_ALARM(d.tabId), { delayInMinutes: CROSS_DOMAIN_GRACE_MIN });
+      await setIcon(d.tabId, false);
+    }
   }
 });
 

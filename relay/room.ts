@@ -160,6 +160,24 @@ export class Room {
           this.broadcastParticipants();
           return;
         }
+        case "navigate": {
+          // Admin + operators only. Deliberately EXCLUDES freeForAll: yanking
+          // everyone to a new page is far more disruptive than a seek, so
+          // free-for-all should not grant it.
+          if (!(conn.id === this.adminId || this.operators.has(conn.id))) return;
+          if (typeof msg.url !== "string" || !/^https?:\/\//i.test(msg.url)) return;
+          this.broadcast(
+            {
+              type: "navigate",
+              from: conn.id,
+              url: msg.url,
+              title: typeof msg.title === "string" ? msg.title.slice(0, 200) : undefined,
+              ts: Date.now(),
+            },
+            conn.id, // don't echo to sender — they're already there
+          );
+          return;
+        }
       }
     });
 
