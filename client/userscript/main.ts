@@ -25,6 +25,19 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
   const initial = ensureRoom();
   const roomId = initial.roomId;
   let passphrase: string | null = initial.passphrase;
+  // Follow-the-host across origins: localStorage doesn't cross origins, so a
+  // first-time cross-origin follower would otherwise land nameless and stall at
+  // the name gate (host left alone in the room). If the follow URL carried a
+  // name and we have none stored here, adopt + persist it; either way strip the
+  // one-shot param so it doesn't linger in the address bar.
+  const carriedName = new URLSearchParams(location.hash.replace(/^#/, "")).get("name");
+  if (carriedName && carriedName.trim()) {
+    if (!me) {
+      me = carriedName.trim().slice(0, 32);
+      try { localStorage.setItem("cp-name", me); } catch {}
+    }
+    writeRoomFragment(roomId, passphrase); // consumes (strips) the name param
+  }
   const currentRoomUrl = () => roomLinkForCurrent(roomId, passphrase);
 
   let you = "";
@@ -288,7 +301,9 @@ export function bootTopFrame(onDeactivated?: () => void): BootHandle {
   let followTimer: ReturnType<typeof setInterval> | null = null;
   function startFollowCountdown(url: string, title?: string) {
     if (followTimer) clearInterval(followTimer);
-    const target = roomLinkForUrl(url, roomId, passphrase);
+    // Carry our name so a cross-origin destination (fresh localStorage) can
+    // auto-rejoin instead of stalling at the name gate.
+    const target = roomLinkForUrl(url, roomId, passphrase, me);
     const where = (title && title.trim()) || new URL(url, location.href).host;
     let secs = 5;
     const cancel = () => {
@@ -491,10 +506,17 @@ function roomLinkForCurrent(id: string, passphrase: string | null): string {
 
 // Build a room link for an arbitrary base URL (used by follow-the-host): strip
 // any existing hash and append our room fragment so the destination re-joins.
-function roomLinkForUrl(base: string, id: string, passphrase: string | null): string {
+// `name` is carried only for follows — localStorage doesn't cross origins, so
+// without it a first-time cross-origin follower lands nameless and stalls at the
+// name gate instead of auto-rejoining. The destination adopts + persists it and
+// strips it from the visible URL (see bootTopFrame). Fragments never hit the
+// server, and names are already public in-room, so this leaks nothing new.
+function roomLinkForUrl(base: string, id: string, passphrase: string | null, name?: string): string {
   const bare = base.split("#")[0] ?? base;
-  const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
-  return `${bare}#${frag}`;
+  const parts = [`party=${id}`];
+  if (passphrase) parts.push(`key=${encodeURIComponent(passphrase)}`);
+  if (name && name.trim()) parts.push(`name=${encodeURIComponent(name.trim().slice(0, 32))}`);
+  return `${bare}#${parts.join("&")}`;
 }
 
 function wrapperLinkFor(videoLink: string, id: string, passphrase: string | null): string {
@@ -517,6 +539,7 @@ function writeRoomFragment(id: string, passphrase: string | null) {
   h.set("party", id);
   if (passphrase) h.set("key", passphrase);
   else h.delete("key");
+  h.delete("name"); // never persist the one-shot follow-the-host name handoff
   history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
 }
 
