@@ -1066,6 +1066,17 @@
     const initial = ensureRoom();
     const roomId = initial.roomId;
     let passphrase = initial.passphrase;
+    const carriedName = new URLSearchParams(location.hash.replace(/^#/, "")).get("name");
+    if (carriedName && carriedName.trim()) {
+      if (!me) {
+        me = carriedName.trim().slice(0, 32);
+        try {
+          localStorage.setItem("cp-name", me);
+        } catch {
+        }
+      }
+      writeRoomFragment(roomId, passphrase);
+    }
     const currentRoomUrl = () => roomLinkForCurrent(roomId, passphrase);
     let you = "";
     let adminId = "";
@@ -1225,7 +1236,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.6")) {
+      if (latest && gt(latest, "0.8.7")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
@@ -1304,7 +1315,7 @@
     let followTimer = null;
     function startFollowCountdown(url, title) {
       if (followTimer) clearInterval(followTimer);
-      const target = roomLinkForUrl(url, roomId, passphrase);
+      const target = roomLinkForUrl(url, roomId, passphrase, me);
       const where = title && title.trim() || new URL(url, location.href).host;
       let secs = 5;
       const cancel = () => {
@@ -1470,10 +1481,12 @@
     const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
     return `${location.origin}${location.pathname}${location.search}#${frag}`;
   }
-  function roomLinkForUrl(base, id, passphrase) {
+  function roomLinkForUrl(base, id, passphrase, name) {
     const bare = base.split("#")[0] ?? base;
-    const frag = passphrase ? `party=${id}&key=${encodeURIComponent(passphrase)}` : `party=${id}`;
-    return `${bare}#${frag}`;
+    const parts = [`party=${id}`];
+    if (passphrase) parts.push(`key=${encodeURIComponent(passphrase)}`);
+    if (name && name.trim()) parts.push(`name=${encodeURIComponent(name.trim().slice(0, 32))}`);
+    return `${bare}#${parts.join("&")}`;
   }
   function wrapperLinkFor(videoLink, id, passphrase) {
     const bare = videoLink.split("#")[0] ?? videoLink;
@@ -1490,6 +1503,7 @@
     h.set("party", id);
     if (passphrase) h.set("key", passphrase);
     else h.delete("key");
+    h.delete("name");
     history.replaceState(null, "", `${location.pathname}${location.search}#${h.toString()}`);
   }
   function randomToken(byteLen) {
