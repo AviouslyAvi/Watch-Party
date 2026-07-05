@@ -37,6 +37,11 @@ const TYPING_DECAY_MS = 3000;
 const TYPING_SEND_THROTTLE_MS = 1500;
 
 const SIDEBAR_WIDTH = 320;
+// Gap between the floating panel and the viewport edges. The panel is inset by
+// this much on top/right/bottom instead of sitting flush, so it reads as a card.
+const SIDEBAR_MARGIN = 16;
+// How far the panel slides right to hide: its own width plus the right-edge gap.
+const SIDEBAR_HIDE_OFFSET = SIDEBAR_WIDTH + SIDEBAR_MARGIN;
 
 export type LayoutMode = "overlay" | "push" | "hidden";
 
@@ -146,18 +151,20 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   const host = document.createElement("div");
   host.id = "avious-party-panel";
   host.style.cssText = `
-    position: fixed; top: 0; right: 0; bottom: 0; width: ${SIDEBAR_WIDTH}px;
+    position: fixed; top: ${SIDEBAR_MARGIN}px; right: ${SIDEBAR_MARGIN}px;
+    bottom: ${SIDEBAR_MARGIN}px; width: ${SIDEBAR_WIDTH}px;
     font: var(--cp-font-size, 13px) system-ui, sans-serif;
     color: var(--cp-text, #eee);
     background: color-mix(in srgb, var(--cp-bg, #141416) calc(var(--cp-bg-opacity, 0.88) * 100%), transparent);
     backdrop-filter: blur(6px);
-    border-left: 1px solid var(--cp-border, #333); z-index: 2147483647;
-    box-shadow: -6px 0 24px rgba(0,0,0,0.5);
-    display: flex; flex-direction: column;
+    border: 1px solid var(--cp-border, #333); border-radius: 20px;
+    z-index: 2147483647;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    display: flex; flex-direction: column; overflow: hidden;
     transition: transform 200ms ease;
   `;
   // Always-visible toggle tab. Lives outside the panel host so that hiding the
-  // panel (transform: translateX(320px)) doesn't drag the tab off-screen — the
+  // panel (transform: translateX(SIDEBAR_HIDE_OFFSET)) doesn't drag the tab off-screen — the
   // userscript path has no toolbar icon to fall back on, so this is the sole
   // escape hatch when layout is "hidden". Position is set by applyLayout().
   const tab = document.createElement("button");
@@ -165,12 +172,13 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   tab.title = "Toggle Watch-Party chat (Alt+Shift+W)";
   tab.textContent = "›";
   tab.style.cssText = `
-    position: fixed; top: 50%; right: ${SIDEBAR_WIDTH}px;
+    position: fixed; top: 50%; right: ${SIDEBAR_HIDE_OFFSET}px;
     transform: translateY(-50%);
     width: 28px; height: 56px;
     background: var(--cp-bg, #141416); color: var(--cp-text, #eee);
-    border: 1px solid var(--cp-border, #333); border-right: none;
-    border-radius: 8px 0 0 8px;
+    border: 1px solid var(--cp-border, #333);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     cursor: pointer; font-size: 14px; padding: 0;
     z-index: 2147483647;
     transition: right 200ms ease;
@@ -278,11 +286,11 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     }
     docEl.style.transition = "margin-right 200ms ease";
     if (mode === "push") {
-      docEl.style.marginRight = `${SIDEBAR_WIDTH}px`;
+      docEl.style.marginRight = `${SIDEBAR_WIDTH + SIDEBAR_MARGIN * 2}px`;
       host.style.transform = "translateX(0)";
     } else if (mode === "hidden") {
       docEl.style.marginRight = cached[ORIGINAL_MARGIN_RIGHT_KEY] ?? "";
-      host.style.transform = `translateX(${SIDEBAR_WIDTH}px)`;
+      host.style.transform = `translateX(${SIDEBAR_HIDE_OFFSET}px)`;
     } else {
       docEl.style.marginRight = cached[ORIGINAL_MARGIN_RIGHT_KEY] ?? "";
       host.style.transform = "translateX(0)";
@@ -293,7 +301,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     tab.textContent = mode === "hidden" ? "‹" : "›";
     // Pin tab to the right edge of the viewport when hidden so it's always
     // reachable; otherwise sit it against the panel's left edge.
-    tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_WIDTH}px`;
+    tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_HIDE_OFFSET}px`;
   }
 
   function setLayoutMode(mode: LayoutMode, persist = true) {
