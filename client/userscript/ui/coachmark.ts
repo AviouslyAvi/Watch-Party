@@ -148,18 +148,32 @@ function placeTooltip(
   requestAnimationFrame(() => {
     const r = anchor.getBoundingClientRect();
     const tr = el.getBoundingClientRect();
+    const margin = 8;
+    const gap = 16;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Prefer placing the tooltip to the left of the anchor, but fall back to
+    // below it when there isn't room on the left.
     let pick: "left" | "bottom" = placement === "auto" ? "left" : placement;
-    if (placement === "auto" && r.left < tr.width + 20) pick = "bottom";
+    if (placement === "auto" && r.left < tr.width + gap + margin) pick = "bottom";
 
     let left: number;
     let top: number;
     if (pick === "left") {
-      left = Math.max(8, r.left - tr.width - 16);
-      top = Math.max(8, r.top);
+      left = r.left - tr.width - gap;
+      top = r.top;
     } else {
-      left = Math.max(8, r.left);
-      top = Math.min(window.innerHeight - tr.height - 8, r.bottom + 12);
+      left = r.left;
+      top = r.bottom + 12;
     }
+
+    // Clamp BOTH axes into the viewport so the tooltip never clips an edge —
+    // anchors near the right/bottom (e.g. the settings gear) used to push the
+    // tooltip off-screen because only the left/top edges were bounded.
+    left = Math.min(Math.max(margin, left), Math.max(margin, vw - tr.width - margin));
+    top = Math.min(Math.max(margin, top), Math.max(margin, vh - tr.height - margin));
+
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;
   });
