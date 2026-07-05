@@ -1039,17 +1039,23 @@
     requestAnimationFrame(() => {
       const r = anchor.getBoundingClientRect();
       const tr = el.getBoundingClientRect();
+      const margin = 8;
+      const gap = 16;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       let pick = placement === "auto" ? "left" : placement;
-      if (placement === "auto" && r.left < tr.width + 20) pick = "bottom";
+      if (placement === "auto" && r.left < tr.width + gap + margin) pick = "bottom";
       let left;
       let top;
       if (pick === "left") {
-        left = Math.max(8, r.left - tr.width - 16);
-        top = Math.max(8, r.top);
+        left = r.left - tr.width - gap;
+        top = r.top;
       } else {
-        left = Math.max(8, r.left);
-        top = Math.min(window.innerHeight - tr.height - 8, r.bottom + 12);
+        left = r.left;
+        top = r.bottom + 12;
       }
+      left = Math.min(Math.max(margin, left), Math.max(margin, vw - tr.width - margin));
+      top = Math.min(Math.max(margin, top), Math.max(margin, vh - tr.height - margin));
       el.style.left = `${left}px`;
       el.style.top = `${top}px`;
     });
@@ -1246,7 +1252,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.8")) {
+      if (latest && gt(latest, "0.8.9")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
