@@ -185,6 +185,8 @@
   var TYPING_DECAY_MS = 3e3;
   var TYPING_SEND_THROTTLE_MS = 1500;
   var SIDEBAR_WIDTH = 320;
+  var SIDEBAR_MARGIN = 16;
+  var SIDEBAR_HIDE_OFFSET = SIDEBAR_WIDTH + SIDEBAR_MARGIN;
   var THEMES = [
     { id: "clarity", name: "Clarity", bgColor: "#ffffff", textColor: "#1d1d1f", accent: "#0071e3", accentText: "#ffffff" },
     { id: "vibrancy", name: "Vibrancy", bgColor: "#1c1c1e", textColor: "#f5f5f7", accent: "#0a84ff", accentText: "#ffffff", opacity: 0.55, blur: 32 },
@@ -239,14 +241,16 @@
     const host = document.createElement("div");
     host.id = "avious-party-panel";
     host.style.cssText = `
-    position: fixed; top: 0; right: 0; bottom: 0; width: ${SIDEBAR_WIDTH}px;
+    position: fixed; top: ${SIDEBAR_MARGIN}px; right: ${SIDEBAR_MARGIN}px;
+    bottom: ${SIDEBAR_MARGIN}px; width: ${SIDEBAR_WIDTH}px;
     font: var(--cp-font-size, 13px) system-ui, sans-serif;
     color: var(--cp-text, #eee);
     background: color-mix(in srgb, var(--cp-bg, #141416) calc(var(--cp-bg-opacity, 0.88) * 100%), transparent);
     backdrop-filter: blur(6px);
-    border-left: 1px solid var(--cp-border, #333); z-index: 2147483647;
-    box-shadow: -6px 0 24px rgba(0,0,0,0.5);
-    display: flex; flex-direction: column;
+    border: 1px solid var(--cp-border, #333); border-radius: 20px;
+    z-index: 2147483647;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    display: flex; flex-direction: column; overflow: hidden;
     transition: transform 200ms ease;
   `;
     const tab = document.createElement("button");
@@ -254,12 +258,13 @@
     tab.title = "Toggle Watch-Party chat (Alt+Shift+W)";
     tab.textContent = "\u203A";
     tab.style.cssText = `
-    position: fixed; top: 50%; right: ${SIDEBAR_WIDTH}px;
+    position: fixed; top: 50%; right: ${SIDEBAR_HIDE_OFFSET}px;
     transform: translateY(-50%);
     width: 28px; height: 56px;
     background: var(--cp-bg, #141416); color: var(--cp-text, #eee);
-    border: 1px solid var(--cp-border, #333); border-right: none;
-    border-radius: 8px 0 0 8px;
+    border: 1px solid var(--cp-border, #333);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     cursor: pointer; font-size: 14px; padding: 0;
     z-index: 2147483647;
     transition: right 200ms ease;
@@ -361,11 +366,11 @@
       }
       docEl.style.transition = "margin-right 200ms ease";
       if (mode === "push") {
-        docEl.style.marginRight = `${SIDEBAR_WIDTH}px`;
+        docEl.style.marginRight = `${SIDEBAR_WIDTH + SIDEBAR_MARGIN * 2}px`;
         host.style.transform = "translateX(0)";
       } else if (mode === "hidden") {
         docEl.style.marginRight = cached[ORIGINAL_MARGIN_RIGHT_KEY] ?? "";
-        host.style.transform = `translateX(${SIDEBAR_WIDTH}px)`;
+        host.style.transform = `translateX(${SIDEBAR_HIDE_OFFSET}px)`;
       } else {
         docEl.style.marginRight = cached[ORIGINAL_MARGIN_RIGHT_KEY] ?? "";
         host.style.transform = "translateX(0)";
@@ -374,7 +379,7 @@
         btn.dataset.active = btn.dataset.mode === mode ? "1" : "0";
       });
       tab.textContent = mode === "hidden" ? "\u2039" : "\u203A";
-      tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_WIDTH}px`;
+      tab.style.right = mode === "hidden" ? "0px" : `${SIDEBAR_HIDE_OFFSET}px`;
     }
     function setLayoutMode(mode, persist = true) {
       settings.layoutMode = mode;
@@ -1252,7 +1257,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.9")) {
+      if (latest && gt(latest, "0.8.10")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
