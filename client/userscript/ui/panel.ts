@@ -178,7 +178,10 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
 
   host.innerHTML = `
     <div id="cp-header" style="padding:10px 12px;border-bottom:1px solid var(--cp-border,#333);display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <span style="font-weight:600;color:var(--cp-accent,#f97316);">🎬 Watch-Party</span>
+      <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+        <span style="width:24px;height:24px;flex:none;border-radius:7px;background:linear-gradient(180deg,color-mix(in srgb,var(--cp-accent,#f97316) 68%,#fff),var(--cp-accent,#f97316));display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px color-mix(in srgb,var(--cp-accent,#f97316) 45%,transparent);"><span style="width:0;height:0;border-style:solid;border-width:4px 0 4px 7px;border-color:transparent transparent transparent var(--cp-accent-text,#fff);margin-left:1px;"></span></span>
+        <span style="font-weight:600;letter-spacing:-0.01em;color:var(--cp-text,#eee);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Watch Party</span>
+      </div>
       <div style="display:flex;gap:4px;align-items:center;">
         <div id="cp-layout-modes" style="display:flex;gap:2px;border:1px solid var(--cp-border,#2a2a2a);border-radius:6px;overflow:hidden;">
           <button type="button" data-mode="overlay" class="cp-mode-btn" title="Overlay the chat on top of the page" style="background:transparent;color:var(--cp-muted,#bbb);border:none;padding:4px 6px;cursor:pointer;font:inherit;font-size:11px;">⧉</button>
@@ -223,20 +226,21 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
           <input type="checkbox" id="cp-ffa"/> Free-for-all controls
         </label>
       </div>
-      <div id="cp-people" style="padding:8px 12px;border-bottom:1px solid var(--cp-border,#2a2a2a);font-size:12px;color:var(--cp-muted,#bbb);max-height:120px;overflow-y:auto;"></div>
+      <div id="cp-people" style="padding:12px;border-bottom:1px solid var(--cp-border,#2a2a2a);font-size:13px;color:var(--cp-text,#eee);max-height:168px;overflow-y:auto;"></div>
       <div id="cp-chat-wrap" style="flex:1;position:relative;display:flex;flex-direction:column;min-height:0;">
-        <div id="cp-chat" style="flex:1;overflow-y:auto;padding:10px 12px;font-size:inherit;min-height:0;"></div>
+        <div id="cp-chat" style="flex:1;overflow-y:auto;padding:12px;font-size:inherit;min-height:0;display:flex;flex-direction:column;gap:8px;"></div>
         <div id="cp-reactions-float" style="position:absolute;left:0;right:0;bottom:0;height:0;pointer-events:none;overflow:visible;"></div>
       </div>
       <div id="cp-reactions" style="display:flex;gap:4px;padding:6px 12px;border-top:1px solid var(--cp-border,#2a2a2a);background:rgba(0,0,0,0.15);transition:opacity 200ms;">
         ${REACTION_EMOJIS.map(
           (e) => `<button type="button" data-emoji="${e}" class="cp-react-btn" style="flex:1;padding:4px 0;background:transparent;border:1px solid var(--cp-border,#2a2a2a);border-radius:6px;cursor:pointer;font-size:16px;line-height:1;">${e}</button>`,
         ).join("")}
+        <button type="button" id="cp-react-more" title="Add an emoji to your message" style="flex:none;width:30px;padding:4px 0;background:transparent;border:1.5px dashed var(--cp-border,#2a2a2a);border-radius:6px;cursor:pointer;font-size:16px;line-height:1;color:var(--cp-muted,#888);">＋</button>
       </div>
       <div id="cp-typing" style="height:16px;padding:0 12px;font-size:11px;color:var(--cp-muted,#888);opacity:0;transition:opacity 200ms;line-height:16px;"></div>
-      <form id="cp-form" style="display:flex;border-top:1px solid var(--cp-border,#2a2a2a);">
-        <input id="cp-input" placeholder="Type a message…" style="flex:1;padding:10px;background:transparent;border:none;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
-        <button style="background:none;border:none;color:var(--cp-accent,#2563eb);padding:0 12px;cursor:pointer;font:inherit;">Send</button>
+      <form id="cp-form" style="display:flex;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--cp-border,#2a2a2a);">
+        <input id="cp-input" placeholder="Message" style="flex:1;min-width:0;padding:8px 14px;background:var(--cp-input-bg,#111);border:1px solid var(--cp-border,#2a2a2a);border-radius:18px;color:var(--cp-text,#eee);outline:none;font:inherit;"/>
+        <button id="cp-send" type="submit" title="Send" style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border:none;cursor:pointer;font:inherit;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;">↑</button>
       </form>
     </div>
   `;
@@ -255,10 +259,14 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
       }
       .cp-react-btn:hover { background:var(--cp-hover,#222) !important; border-color:var(--cp-border,#444) !important; }
       .cp-react-btn:active { transform: scale(0.92); }
+      #cp-react-more:hover { background:var(--cp-hover,#222) !important; color:var(--cp-text,#eee) !important; }
+      #cp-react-more:active { transform: scale(0.92); }
+      #cp-send:hover { filter: brightness(1.08); }
+      #cp-send:active { transform: scale(0.92); }
       .cp-mode-btn[data-active="1"] { background:var(--cp-hover,#2a2a2a) !important; color:var(--cp-accent,#f97316) !important; }
       #cp-bring:hover { background:var(--cp-hover,#222) !important; }
       #avious-party-panel.cp-high-contrast { --cp-bg: #000 !important; --cp-text: #fff !important; --cp-bg-opacity: 1 !important; }
-      .cp-people-row { display:flex; align-items:center; gap:6px; padding:2px 0; }
+      .cp-people-row { display:flex; align-items:center; gap:9px; padding:4px 0; font-size:13px; }
       .cp-people-row button.cp-op-btn { background:transparent;border:1px solid var(--cp-border,#333);border-radius:4px;color:var(--cp-muted,#bbb);padding:1px 6px;cursor:pointer;font-size:10px; }
       .cp-people-row button.cp-op-btn:hover { background:var(--cp-hover,#222);border-color:var(--cp-border,#444); }
     `;
@@ -658,6 +666,10 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   });
   const stop = (e: Event) => e.stopPropagation();
   for (const ev of ["keydown", "keyup", "keypress"]) input.addEventListener(ev, stop);
+  // The "＋" at the end of the reaction row focuses the message box so the OS
+  // emoji picker (⌃⌘Space on macOS) can drop any emoji into your message.
+  // Custom broadcast reactions would need a protocol change — tracked separately.
+  (host.querySelector("#cp-react-more") as HTMLButtonElement | null)?.addEventListener("click", () => input.focus());
 
   let lastTypingSent = 0;
   input.addEventListener("input", () => {
@@ -765,26 +777,33 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
   function rerenderPeopleList() {
     const peopleEl = $("#cp-people") as HTMLDivElement;
     const youIsAdmin = currentYou === currentAdminId;
-    peopleEl.innerHTML = currentParticipants
+    const header = `<div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--cp-muted,#888);margin-bottom:8px;">In the room · ${currentParticipants.length}</div>`;
+    const rows = currentParticipants
       .map((p) => {
         const isYou = p.id === currentYou;
-        const adminBadge = p.isAdmin ? "👑 " : "";
-        const opBadge = !p.isAdmin && p.isOperator ? "⭐ " : "";
-        const youTag = isYou ? " (you)" : "";
-        const action =
-          youIsAdmin && !isYou && !p.isAdmin
+        const color = colorFor(p.id, settings.colorblind);
+        const initial = escapeHtml((p.name.trim()[0] || "?").toUpperCase());
+        const crown = p.isAdmin ? `<span style="font-size:11px;">👑</span>` : "";
+        const star = !p.isAdmin && p.isOperator ? `<span style="font-size:11px;">⭐</span>` : "";
+        const avatar = `<span style="position:relative;width:26px;height:26px;flex:none;">
+            <span style="width:26px;height:26px;border-radius:50%;background:${color};color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">${initial}</span>
+            <span style="position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:#34c759;border:2px solid var(--cp-bg,#141416);"></span>
+          </span>`;
+        const trailing = isYou
+          ? `<span style="margin-left:auto;color:var(--cp-muted,#888);font-size:11px;">you</span>`
+          : youIsAdmin && !p.isAdmin
             ? p.isOperator
-              ? `<button class="cp-op-btn" data-action="demote" data-target="${p.id}">remove ⭐</button>`
-              : `<button class="cp-op-btn" data-action="promote" data-target="${p.id}">give ⭐</button>`
+              ? `<button class="cp-op-btn" data-action="demote" data-target="${p.id}" style="margin-left:auto;">remove ⭐</button>`
+              : `<button class="cp-op-btn" data-action="promote" data-target="${p.id}" style="margin-left:auto;">give ⭐</button>`
             : "";
         return `<div class="cp-people-row">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            ${adminBadge}${opBadge}<span style="color:${colorFor(p.id, settings.colorblind)};">${escapeHtml(p.name)}</span>${youTag}
-          </span>
-          ${action}
+          ${avatar}
+          <span style="color:${color};font-weight:${isYou ? "500" : "400"};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</span>${crown}${star}
+          ${trailing}
         </div>`;
       })
       .join("");
+    peopleEl.innerHTML = header + rows;
     Array.from(peopleEl.querySelectorAll<HTMLButtonElement>(".cp-op-btn")).forEach((btn) => {
       btn.addEventListener("click", () => {
         const target = btn.dataset.target;
@@ -826,17 +845,33 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
     const m = String(d.getMinutes()).padStart(2, "0");
     return `${h}:${m}`;
   }
+  // iMessage-style bubbles: your messages hug the right in the accent color;
+  // everyone else's sit left in a muted fill. Consecutive messages from the
+  // same sender group — only the first shows the (colored) name label, matching
+  // the mockup. All colors come from theme tokens so bubbles track every preset.
   function renderChatLine(rec: ChatRecord) {
+    const isMine = rec.from === currentYou;
+    const idx = chatLog.indexOf(rec);
+    const prev = idx > 0 ? chatLog[idx - 1] : undefined;
+    const groupStart = !prev || prev.from !== rec.from;
+    const color = colorFor(rec.from, settings.colorblind);
     const liveName = nameMap.get(rec.from) ?? "…";
-    const tsPart = settings.showTimestamps
-      ? `<span class="cp-ts" style="color:var(--cp-muted,#666);font-size:10px;margin-right:6px;">${fmtTs(rec.ts)}</span>`
+    rec.el.style.cssText = `display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};align-self:${isMine ? "flex-end" : "flex-start"};max-width:82%;`;
+    const nameLabel =
+      !isMine && groupStart
+        ? `<span style="font-size:10px;color:${color};margin:0 0 2px 12px;">${escapeHtml(liveName)}</span>`
+        : "";
+    const bubbleStyle = isMine
+      ? "background:var(--cp-accent,#2563eb);color:var(--cp-accent-text,#fff);border-radius:17px;border-bottom-right-radius:5px;"
+      : "background:var(--cp-hover,#333);color:var(--cp-text,#eee);border-radius:17px;border-bottom-left-radius:5px;";
+    const tsLine = settings.showTimestamps
+      ? `<span style="font-size:9px;color:var(--cp-muted,#888);margin:2px ${isMine ? "8px" : "0"} 0 ${isMine ? "0" : "12px"};">${fmtTs(rec.ts)}</span>`
       : "";
-    rec.el.innerHTML = `${tsPart}<b data-cp-from="${rec.from}" style="color:${colorFor(rec.from, settings.colorblind)};">${escapeHtml(liveName)}</b>: ${escapeHtml(rec.text)}`;
+    rec.el.innerHTML = `${nameLabel}<span data-cp-from="${rec.from}" style="${bubbleStyle}padding:7px 12px;line-height:1.35;word-break:break-word;">${escapeHtml(rec.text)}</span>${tsLine}`;
   }
   function appendChat(id: ClientId, name: string, text: string, ts: number = Date.now()) {
     nameMap.set(id, name);
     const div = document.createElement("div");
-    div.style.marginBottom = "6px";
     div.dataset.cpRecord = "1";
     const rec: ChatRecord = { el: div, from: id, text, ts };
     chatLog.push(rec);
@@ -862,7 +897,7 @@ export function mountPanel(hooks: PanelHooks, initialUsername?: string) {
 
   function appendSystem(text: string) {
     const div = document.createElement("div");
-    div.style.cssText = "color:var(--cp-muted,#888);font-style:italic;margin-bottom:6px;";
+    div.style.cssText = "align-self:center;color:var(--cp-muted,#888);font-style:italic;font-size:11px;text-align:center;max-width:90%;";
     div.textContent = text;
     const chat = $("#cp-chat") as HTMLDivElement;
     chat.appendChild(div);
