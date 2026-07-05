@@ -186,12 +186,16 @@
   var TYPING_SEND_THROTTLE_MS = 1500;
   var SIDEBAR_WIDTH = 320;
   var THEMES = [
-    { id: "midnight", name: "Midnight", bgColor: "#141416", textColor: "#eeeeee", accent: "#f97316", accentText: "#1a1206" },
-    { id: "cinema", name: "Cinema", bgColor: "#0d0b0c", textColor: "#f3e7d6", accent: "#e11d48", accentText: "#ffffff" },
-    { id: "synthwave", name: "Synthwave", bgColor: "#1a1030", textColor: "#f0e6ff", accent: "#ec4899", accentText: "#ffffff" },
-    { id: "forest", name: "Forest", bgColor: "#0f1f17", textColor: "#e2efe8", accent: "#34d399", accentText: "#04241a" },
-    { id: "ocean", name: "Ocean", bgColor: "#0b1f2e", textColor: "#e0f2fe", accent: "#38bdf8", accentText: "#04293b" },
-    { id: "light", name: "Light", bgColor: "#f7f7f8", textColor: "#1a1a1d", accent: "#f97316", accentText: "#ffffff" }
+    { id: "clarity", name: "Clarity", bgColor: "#ffffff", textColor: "#1d1d1f", accent: "#0071e3", accentText: "#ffffff" },
+    { id: "vibrancy", name: "Vibrancy", bgColor: "#1c1c1e", textColor: "#f5f5f7", accent: "#0a84ff", accentText: "#ffffff", opacity: 0.55, blur: 32 },
+    { id: "bubbles", name: "Bubbles", bgColor: "#f2f2f7", textColor: "#1c1c1e", accent: "#007aff", accentText: "#ffffff" },
+    { id: "cinema", name: "Cinema", bgColor: "#201a12", textColor: "#f3e7d6", accent: "#ff6a3d", accentText: "#ffffff" },
+    { id: "graphite", name: "Graphite", bgColor: "#1c1c1e", textColor: "#f5f5f7", accent: "#8e8e93", accentText: "#ffffff" },
+    { id: "midnight", name: "Midnight", bgColor: "#000000", textColor: "#f5f5f7", accent: "#6e6aff", accentText: "#ffffff" },
+    { id: "sorbet", name: "Sorbet", bgColor: "#fceef4", textColor: "#4a2f3c", accent: "#ff5e8a", accentText: "#ffffff" },
+    { id: "compact", name: "Compact", bgColor: "#fbfbfd", textColor: "#1d1d1f", accent: "#007aff", accentText: "#ffffff" },
+    { id: "aurora", name: "Aurora", bgColor: "#12121a", textColor: "#f5f5f7", accent: "#4f8cff", accentText: "#ffffff", opacity: 0.45, blur: 48 },
+    { id: "reader", name: "Reader", bgColor: "#f7f3ec", textColor: "#2b2620", accent: "#b85c38", accentText: "#ffffff" }
   ];
   function accentTextFor(hex) {
     const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -208,6 +212,7 @@
     accent: "#f97316",
     accentText: "#1a1206",
     opacity: 0.88,
+    blur: 6,
     fontSize: 13,
     colorblind: "none",
     highContrast: false,
@@ -426,6 +431,7 @@
       tab.style.setProperty("--cp-bg", settings.bgColor);
       tab.style.setProperty("--cp-text", settings.textColor);
       tab.style.setProperty("--cp-border", derived["--cp-border"]);
+      host.style.backdropFilter = `blur(${settings.blur ?? 6}px)`;
       host.classList.toggle("cp-high-contrast", settings.highContrast);
       rerenderPeopleList();
       rerenderChatColors();
@@ -541,11 +547,15 @@
           settings.textColor = preset.textColor;
           settings.accent = preset.accent;
           settings.accentText = preset.accentText;
+          if (preset.opacity !== void 0) settings.opacity = preset.opacity;
+          settings.blur = preset.blur ?? 6;
           saveSettings(settings);
           applyTheme();
           $("#cp-set-bg").value = preset.bgColor;
           $("#cp-set-text").value = preset.textColor;
           $("#cp-set-accent").value = preset.accent;
+          $("#cp-set-opacity").value = String(settings.opacity);
+          $("#cp-opacity-val").textContent = settings.opacity.toFixed(2);
           refreshThemeSwatches();
         });
       });
@@ -1236,7 +1246,7 @@
     }
     if (me) connect();
     checkForUpdate().then((latest) => {
-      if (latest && gt(latest, "0.8.7")) {
+      if (latest && gt(latest, "0.8.8")) {
         pendingUpdate = { tag: latest, href: "https://github.com/AviouslyAvi/Watch-Party/releases/latest" };
         panel?.showUpdateBanner(latest, "https://github.com/AviouslyAvi/Watch-Party/releases/latest");
       }
